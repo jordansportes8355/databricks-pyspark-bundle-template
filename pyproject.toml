@@ -2,6 +2,7 @@
 name = "databricks-pyspark-bundle-template"
 version = "0.3.0"
 description = "Copier template for PySpark jobs deployed with Databricks Asset Bundles"
+license = "MIT"
 requires-python = ">=3.11"
 dependencies = []
 
