@@ -4,23 +4,17 @@ from __future__ import annotations
 
 from pyspark.sql import SparkSession
 
-from {{ package_name }}.spark import get_spark, is_databricks
+from {{ package_name }}.spark import has_databricks_connect, is_databricks
 
 
 def test_is_databricks_reads_runtime_env_var(monkeypatch):
     monkeypatch.delenv("DATABRICKS_RUNTIME_VERSION", raising=False)
     assert not is_databricks()
 
-    monkeypatch.setenv("DATABRICKS_RUNTIME_VERSION", "{{ databricks_runtime }}")
+    monkeypatch.setenv("DATABRICKS_RUNTIME_VERSION", "16.4")
     assert is_databricks()
 
 
-def test_get_spark_applies_conf_with_and_without_prefix(spark: SparkSession):
-    session = get_spark(conf={"sql.shuffle.partitions": 3, "spark.sql.adaptive.enabled": "false"})
-
-    assert session is spark
-    assert session.conf.get("spark.sql.shuffle.partitions") == "3"
-    assert session.conf.get("spark.sql.adaptive.enabled") == "false"
-
-    spark.conf.set("spark.sql.shuffle.partitions", "1")
-    spark.conf.set("spark.sql.adaptive.enabled", "true")
+def test_unit_tests_run_on_local_spark_with_delta(spark: SparkSession):
+    assert not has_databricks_connect()  # databricks-connect lives in .venv-dbconnect only
+    assert spark.conf.get("spark.sql.extensions") == "io.delta.sql.DeltaSparkSessionExtension"

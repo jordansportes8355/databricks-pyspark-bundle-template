@@ -41,31 +41,7 @@ author_email:
     Must be a valid email address
     {% endif %}
 
-# ── Runtime ───────────────────────────────────────────────────────────────────
-# Python / Spark / Delta versions are derived from the Databricks Runtime so that
-# local tests run against the same stack as the cluster.
-
-databricks_runtime:
-  type: str
-  help: "Databricks Runtime LTS version"
-  default: "15.4"
-  choices:
-    "14.3 LTS (Spark 3.5, Python 3.10)": "14.3"
-    "15.4 LTS (Spark 3.5, Python 3.11)": "15.4"
-    "16.4 LTS (Spark 3.5, Python 3.12)": "16.4"
-    "17.3 LTS (Spark 4.0, Python 3.12)": "17.3"
-    "18 LTS (Spark 4.1, Python 3.12)": "18"
-
-# ── Cloud / Databricks ────────────────────────────────────────────────────────
-
-cloud_provider:
-  type: str
-  help: "Cloud provider hosting your Databricks workspace"
-  default: "aws"
-  choices:
-    - aws
-    - azure
-    - gcp
+# ── Databricks ────────────────────────────────────────────────────────────────
 
 databricks_host:
   type: str
@@ -77,28 +53,72 @@ databricks_host:
 
 unity_catalog_name:
   type: str
-  help: "Unity Catalog catalog name"
-  default: "{{ package_name }}"
+  help: "Existing Unity Catalog catalog the job writes to (one schema per target is created in it)"
+  default: "main"
   validator: >-
     {% if not (unity_catalog_name | regex_search('^[a-z][a-z0-9_]*$')) %}
     Must contain only lowercase letters, digits and underscores
     {% endif %}
 
+compute:
+  type: str
+  help: "Compute the job runs on"
+  default: serverless
+  choices:
+    "Serverless (no cluster to manage)": serverless
+    "Job cluster (classic compute, pinned DBR)": job_cluster
+
+serverless_environment:
+  type: str
+  help: "Serverless environment version"
+  when: "{{ compute == 'serverless' }}"
+  default: "5"
+  choices:
+    "2 (Python 3.11, Spark 3.5)": "2"
+    "3 (Python 3.12, Spark 3.5)": "3"
+    "4 (Python 3.12, Spark 4.0)": "4"
+    "5 (Python 3.12, Spark 4.1)": "5"
+
+databricks_runtime:
+  type: str
+  help: "Databricks Runtime LTS version of the job cluster"
+  when: "{{ compute == 'job_cluster' }}"
+  default: "16.4"
+  choices:
+    "14.3 LTS (Spark 3.5, Python 3.10)": "14.3"
+    "15.4 LTS (Spark 3.5, Python 3.11)": "15.4"
+    "16.4 LTS (Spark 3.5, Python 3.12)": "16.4"
+    "17.3 LTS (Spark 4.0, Python 3.12)": "17.3"
+    "18 LTS (Spark 4.1, Python 3.12)": "18"
+
+cloud_provider:
+  type: str
+  help: "Cloud provider hosting the workspace (sets the default node type)"
+  when: "{{ compute == 'job_cluster' }}"
+  default: aws
+  choices:
+    - aws
+    - azure
+    - gcp
+
 # ── Computed (hidden) ─────────────────────────────────────────────────────────
-# Single source of truth for the stack of each runtime: add a new DBR here.
+# Single source of truth for the local stack matching the remote compute.
+# Serverless environments map to the DBR they are built on. Add a new DBR here.
 
 runtime:
   type: yaml
   when: false
   default: >-
+    {%- set serverless_to_dbr = {"2": "15.4", "3": "16.4", "4": "17.3", "5": "18"} -%}
+    {%- set dbr = serverless_to_dbr[serverless_environment] if compute == "serverless" else databricks_runtime -%}
     {%- set matrix = {
-      "14.3": {"python": "3.10", "pyspark": ">=3.5,<3.6", "delta": ">=3.2,<3.4", "scala": "2.12", "java": "17"},
-      "15.4": {"python": "3.11", "pyspark": ">=3.5,<3.6", "delta": ">=3.2,<3.4", "scala": "2.12", "java": "17"},
-      "16.4": {"python": "3.12", "pyspark": ">=3.5,<3.6", "delta": ">=3.2,<3.4", "scala": "2.12", "java": "17"},
-      "17.3": {"python": "3.12", "pyspark": ">=4.0,<4.1", "delta": ">=4.0,<4.1", "scala": "2.13", "java": "17"},
-      "18":   {"python": "3.12", "pyspark": ">=4.1,<4.2", "delta": ">=4.2,<4.3", "scala": "2.13", "java": "21"},
+      "14.3": {"python": "3.10", "pyspark": ">=3.5,<3.6", "delta": ">=3.2,<3.4", "dbconnect": ">=14.3,<14.4", "scala": "2.12", "java": "17"},
+      "15.4": {"python": "3.11", "pyspark": ">=3.5,<3.6", "delta": ">=3.2,<3.4", "dbconnect": ">=15.4,<15.5", "scala": "2.12", "java": "17"},
+      "16.4": {"python": "3.12", "pyspark": ">=3.5,<3.6", "delta": ">=3.2,<3.4", "dbconnect": ">=16.4,<16.5", "scala": "2.12", "java": "17"},
+      "17.3": {"python": "3.12", "pyspark": ">=4.0,<4.1", "delta": ">=4.0,<4.1", "dbconnect": ">=17.3,<17.4", "scala": "2.13", "java": "17"},
+      "18":   {"python": "3.12", "pyspark": ">=4.1,<4.2", "delta": ">=4.2,<4.3", "dbconnect": ">=18.0,<19", "scala": "2.13", "java": "21"},
     } -%}
-    {{ matrix[databricks_runtime] | to_json }}
+    {{ matrix[dbr] | to_json }}
 
 default_node_type:
   type: str

@@ -1,85 +1,20 @@
-"""Configuration loading: base.yaml + env overlay, parsed into frozen dataclasses."""
+"""Job configuration, built from the parameters passed by the bundle (see databricks.yml)."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field, fields
-from pathlib import Path
-from typing import Any
-
-import yaml
-
-ENVS = ("dev", "staging", "prod")
-
-# conf/ lives next to this file inside the installed wheel — works both locally
-# (editable install) and on Databricks (regular wheel in site-packages).
-_CONF_DIR = Path(__file__).parent / "conf"
-
-
-@dataclass(frozen=True)
-class AppConfig:
-    name: str
-    log_level: str = "INFO"
-
-
-@dataclass(frozen=True)
-class UnityCatalogConfig:
-    catalog: str
-    schema: str
+from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
 class Config:
-    app: AppConfig
-    unity_catalog: UnityCatalogConfig
-    spark: dict[str, Any] = field(default_factory=dict)
+    catalog: str
+    schema: str
 
+    @property
+    def schema_name(self) -> str:
+        """Fully qualified schema: catalog.schema."""
+        return f"{self.catalog}.{self.schema}"
 
-def load_config(env: str) -> Config:
-    """Merge base.yaml with the optional ``<env>.yaml`` overlay and return a Config."""
-    if env not in ENVS:
-        raise ValueError(f"Unknown env {env!r}, expected one of {ENVS}")
-    return parse_config(_deep_merge(_load_yaml("base.yaml"), _load_yaml(f"{env}.yaml")))
-
-
-def parse_config(raw: dict[str, Any]) -> Config:
-    """Build a Config from a dict; unknown or missing keys raise ValueError."""
-    _check_keys("config", raw, Config)
-    return Config(
-        app=_build(AppConfig, "app", raw.get("app")),
-        unity_catalog=_build(UnityCatalogConfig, "unity_catalog", raw.get("unity_catalog")),
-        spark=raw.get("spark") or {},
-    )
-
-
-def _build(cls: type, section: str, data: Any) -> Any:
-    if not isinstance(data, dict):
-        raise ValueError(f"Config section {section!r} is missing or not a mapping")
-    _check_keys(section, data, cls)
-    try:
-        return cls(**data)
-    except TypeError as exc:  # missing required key
-        raise ValueError(f"Config section {section!r}: {exc}") from exc
-
-
-def _check_keys(section: str, data: dict[str, Any], cls: type) -> None:
-    unknown = data.keys() - {f.name for f in fields(cls)}
-    if unknown:
-        raise ValueError(f"Unknown key(s) in {section!r}: {sorted(unknown)}")
-
-
-def _load_yaml(filename: str) -> dict[str, Any]:
-    path = _CONF_DIR / filename
-    if not path.exists():
-        return {}
-    with path.open(encoding="utf-8") as f:
-        return yaml.safe_load(f) or {}
-
-
-def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
-    result = base.copy()
-    for key, value in override.items():
-        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
-            result[key] = _deep_merge(result[key], value)
-        else:
-            result[key] = value
-    return result
+    def table(self, name: str) -> str:
+        """Fully qualified table name in the job schema: catalog.schema.name."""
+        return f"{self.schema_name}.{name}"

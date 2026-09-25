@@ -22,8 +22,10 @@ jobs:
         with:
           python-version: "3.12"
 
+      - uses: databricks/setup-cli@v1.18.0  # bundle validate tests
+
       - name: Lint
         run: uvx ruff check tests/
 
-      - name: Template tests (incl. generated project unit tests)
+      - name: Template tests (generated unit tests + bundle validation)
         run: uv run pytest

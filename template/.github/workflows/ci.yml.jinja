@@ -38,7 +38,7 @@ jobs:
       - name: Lint
         run: make lint
 
-      - name: Unit tests
+      - name: Unit tests (local Spark)
         run: make test
 
   bundle-validate:
@@ -65,6 +65,13 @@ jobs:
       # The bundle builds the wheel itself (see artifacts in databricks.yml)
       - name: Deploy to staging
         run: databricks bundle deploy --target staging
+
+      - name: Run the job on staging
+        run: databricks bundle run --target staging {{ package_name }}_job
+
+      # Databricks Connect on {% if compute == 'job_cluster' %}serverless unless DATABRICKS_CLUSTER_ID is set{% else %}serverless{% endif %}
+      - name: Integration tests
+        run: make test-integration
 
   deploy-prod:
     runs-on: ubuntu-latest

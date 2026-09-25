@@ -1,7 +1,7 @@
 [project]
-name = "pyspark-template"
-version = "0.2.0"
-description = "Copier template for PySpark + Databricks Asset Bundles (AWS, Azure, GCP)"
+name = "databricks-pyspark-bundle-template"
+version = "0.3.0"
+description = "Copier template for PySpark jobs deployed with Databricks Asset Bundles"
 requires-python = ">=3.11"
 dependencies = []
 

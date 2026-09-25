@@ -3,13 +3,13 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "{{ project_slug }}"
+name = "{{ package_name }}"
 version = "0.1.0"
 description = "{{ project_name }}"
 authors = [{ name = "{{ author_name }}", email = "{{ author_email }}" }]
-requires-python = ">={{ runtime.python }}"
+# Same Python minor version as the Databricks compute
+requires-python = "~={{ runtime.python }}.0"
 dependencies = [
-    "pyyaml>=6.0",
     "python-json-logger>=3.1",
 ]
 
@@ -17,14 +17,24 @@ dependencies = [
 {{ project_slug }} = "{{ package_name }}.main:main"
 
 [dependency-groups]
-# pyspark / delta-spark are provided by the cluster: local-only, pinned to DBR {{ databricks_runtime }}.
 dev = [
-    "pyspark{{ runtime.pyspark }}",
-    "delta-spark{{ runtime.delta }}",
     "pytest>=8.0",
     "ruff>=0.16",
     "pre-commit>=3.0",
 ]
+# Local Spark + Delta for unit tests, pinned to the compute's Spark version.
+local = [
+    "pyspark{{ runtime.pyspark }}",
+    "delta-spark{{ runtime.delta }}",
+]
+# Remote Spark on the workspace (make test-integration). Conflicts with pyspark.
+dbconnect = [
+    "databricks-connect{{ runtime.dbconnect }}",
+]
+
+[tool.uv]
+default-groups = ["dev", "local"]
+conflicts = [[{ group = "local" }, { group = "dbconnect" }]]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/{{ package_name }}"]

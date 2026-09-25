@@ -1,4 +1,4 @@
-"""Example job: read → transform → write."""
+"""Example job: read the NYC taxi sample → transform → write to the job schema."""
 
 from __future__ import annotations
 
@@ -12,20 +12,20 @@ from {{ package_name }}.transformations.example import add_processing_date, filt
 
 logger = logging.getLogger(__name__)
 
+# Available in every Databricks workspace — replace with your own source.
+SOURCE_TABLE = "samples.nyctaxi.trips"
+OUTPUT_TABLE = "trips_processed"
+
 
 def run(spark: SparkSession, cfg: Config) -> None:
-    """Read source table, apply transformations, write to output table."""
-    catalog = cfg.unity_catalog.catalog
-    schema = cfg.unity_catalog.schema
+    """Read the source table, drop trips without zip codes, write the result."""
+    output = cfg.table(OUTPUT_TABLE)
 
-    source = f"{catalog}.{schema}.source"
-    output = f"{catalog}.{schema}.output"
-
-    logger.info("Reading from %s", source)
-    df = read_table(spark, source)
+    logger.info("Reading from %s", SOURCE_TABLE)
+    df = read_table(spark, SOURCE_TABLE)
 
     logger.info("Applying transformations")
-    df = filter_non_null(df, "id")
+    df = filter_non_null(df, "pickup_zip", "dropoff_zip")
     df = add_processing_date(df)
 
     logger.info("Writing to %s", output)

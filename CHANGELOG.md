@@ -1,5 +1,26 @@
 # Changelog
 
+## v0.3.0
+
+Databricks-only, bundle-first:
+- Repository renamed `pyspark-template` → `databricks-pyspark-bundle-template`
+- Compute chosen at generation: serverless (environment 2–5) or job cluster (DBR 14.3–18 LTS)
+- Per-environment settings moved from YAML files to bundle variables passed as job parameters;
+  `conf/` and the `pyyaml` dependency removed
+- Personal dev schema `dev_<user>`; the job creates its schema if missing
+- Example job reads `samples.nyctaxi.trips`, so it runs out of the box on any workspace
+- Databricks Connect: `dbconnect` dependency group (separate `.venv-dbconnect`), `get_spark` uses it
+  when installed, integration tests in `tests/integration`, `make test-integration`
+- CI on `main`: deploy staging, run the job, run integration tests
+
+Fixes:
+- Wheel path in the job resource resolved to `resources/dist/*.whl` (now `../dist/*.whl`)
+- staging / prod `root_path` in `/Workspace/Shared` was writable by all users; now the deploying identity's folder
+
+Tests:
+- Both compute types rendered and checked; `databricks bundle validate` run for every target against a fake
+  workspace API
+
 ## v0.2.0
 
 Lighter generated project:

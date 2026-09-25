@@ -1,7 +1,11 @@
-.PHONY: install lint format test deploy-dev run-dev clean
+.PHONY: install lint format test test-integration validate deploy-dev run-dev clean
+
+# Databricks Connect lives in its own venv: it cannot coexist with pyspark.
+DBCONNECT = UV_PROJECT_ENVIRONMENT=.venv-dbconnect uv run --no-default-groups --group dev --group dbconnect
 
 install:
 	uv sync
+	@git rev-parse --git-dir >/dev/null 2>&1 || git init -q  # pre-commit needs a git repo
 	uv run pre-commit install
 
 lint:
@@ -14,6 +18,13 @@ format:
 
 test:
 	uv run pytest tests/unit/
+
+# Runs on the workspace through Databricks Connect (needs Databricks auth)
+test-integration:
+	$(DBCONNECT) pytest tests/integration/
+
+validate:
+	databricks bundle validate
 
 # staging / prod are deployed by CI only (push to main, v* tag)
 deploy-dev:

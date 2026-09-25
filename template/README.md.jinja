@@ -1,44 +1,64 @@
 # {{ project_name }}
 
-PySpark job deployed on Databricks (DBR {{ databricks_runtime }} LTS, Python {{ runtime.python }}) with Databricks Asset Bundles.
+PySpark job deployed with a Databricks Asset Bundle on
+{% if compute == 'serverless' %}serverless compute (environment {{ serverless_environment }}){% else %}a job cluster (DBR {{ databricks_runtime }} LTS){% endif %}, Python {{ runtime.python }}.
 
 ## Prerequisites
 
 - [uv](https://docs.astral.sh/uv/)
-- Java {{ runtime.java }} (for local Spark)
-- [Databricks CLI](https://docs.databricks.com/dev-tools/cli/) ≥ 0.218, authenticated against `{{ databricks_host }}`
+- Java {{ runtime.java }} (local Spark for unit tests)
+- [Databricks CLI](https://docs.databricks.com/dev-tools/cli/install.html) authenticated on `{{ databricks_host }}`:
+  `databricks auth login --host {{ databricks_host }}`
 
-## Getting started
+## Development loop
 
 ```bash
-make install    # uv sync + pre-commit hooks
-make test       # unit tests on a local Spark + Delta session
+make install            # uv sync + pre-commit hooks
+make test               # unit tests on local Spark + Delta (no workspace needed)
+make test-integration   # integration tests on the workspace via Databricks Connect
+make run-dev            # deploy your personal copy of the bundle and run the job
 ```
+
+In dev, the job is named `[dev <you>] …`, its schedule is paused and it writes to
+`{{ unity_catalog_name }}.dev_<you>`, so every developer has an isolated copy.
 
 ## Layout
 
 | Path | Role |
 | --- | --- |
-| `src/{{ package_name }}/transformations/` | Pure DataFrame → DataFrame functions, unit-tested |
-| `src/{{ package_name }}/io.py` | Unity Catalog / Delta readers and writers |
+| `databricks.yml` | Bundle: targets (dev / staging / prod) and their variables |
+| `resources/` | Jobs deployed by the bundle |
+| `src/{{ package_name }}/main.py` | Wheel entry point, receives `--catalog`, `--schema`, `--log-level` |
 | `src/{{ package_name }}/jobs/` | Jobs wiring I/O and transformations |
-| `src/{{ package_name }}/conf/` | `base.yaml` (prod values) + `dev` / `staging` overlays |
-| `resources/` | Databricks job definitions |
+| `src/{{ package_name }}/transformations/` | Pure DataFrame → DataFrame functions |
+| `src/{{ package_name }}/io.py` | Unity Catalog / Delta readers and writers |
+| `tests/unit/` | Local Spark tests |
+| `tests/integration/` | Databricks Connect tests (read-only on the workspace) |
 
 Add a job by creating a module in `jobs/` exposing `run(spark, cfg)` and registering it in `_JOBS` in `main.py`.
 
 ## Configuration
 
-`load_config(env)` deep-merges `conf/base.yaml` with `conf/<env>.yaml` (if present) into frozen dataclasses;
-unknown or missing keys fail fast. The `spark` section is applied as runtime Spark confs at startup
-(keys without the `spark.` prefix).
+Settings that change per environment are bundle variables, set per target in `databricks.yml`
+and passed to the job as parameters:
+
+| Variable | dev | staging | prod |
+| --- | --- | --- | --- |
+| `catalog` | `{{ unity_catalog_name }}` | `{{ unity_catalog_name }}` | `{{ unity_catalog_name }}` |
+| `schema` | `dev_<you>` | `{{ package_name }}_staging` | `{{ package_name }}` |
+| `log_level` | `DEBUG` | `INFO` | `INFO` |
+
+To add a setting: declare a variable in `databricks.yml`, pass it in `resources/{{ package_name }}_job.yml`,
+then read it in `main.py`.
+
+The deploying identity needs `USE CATALOG` and `CREATE SCHEMA` on `{{ unity_catalog_name }}`.
 
 ## Deployment
 
 | Target | How |
 | --- | --- |
-| dev | `make run-dev` deploys and runs (resources prefixed with your username) |
-| staging | automatic on push to `main` |
+| dev | `make run-dev` |
+| staging | automatic on push to `main`: deploy, run the job, integration tests |
 | prod | automatic on `v*` tag, gated by the `production` GitHub environment |
 
 CI authenticates with a service principal (OAuth M2M): set `DATABRICKS_HOST`, `DATABRICKS_CLIENT_ID`

@@ -1,44 +1,61 @@
-"""SparkSession factory — cluster session on Databricks, local Delta session elsewhere."""
+"""SparkSession factory: cluster session, Databricks Connect, or local Spark + Delta."""
 
 from __future__ import annotations
 
+import importlib.util
 import os
-from typing import Any
 
 from pyspark.sql import SparkSession
 
 
 def is_databricks() -> bool:
-    """True when running on a Databricks cluster (set by the runtime)."""
+    """True when running on Databricks compute (set by the runtime)."""
     return "DATABRICKS_RUNTIME_VERSION" in os.environ
 
 
-def get_spark(app_name: str = "{{ project_name }}", conf: dict[str, Any] | None = None) -> SparkSession:
-    """Return a SparkSession and apply runtime SQL confs.
+def has_databricks_connect() -> bool:
+    """True when databricks-connect is installed (``make test-integration`` environment)."""
+    try:
+        return importlib.util.find_spec("databricks.connect") is not None
+    except ModuleNotFoundError:  # parent "databricks" package absent
+        return False
 
-    On Databricks the cluster session is reused. Locally (dev / CI) a session is
-    built with the Delta Lake jars pulled in by ``delta-spark``.
 
-    Args:
-        app_name: Application name for local sessions.
-        conf: Runtime confs, keys with or without the ``spark.`` prefix
-            (e.g. the ``spark`` section of the YAML config).
+def get_spark(app_name: str = "{{ project_name }}") -> SparkSession:
+    """Return the SparkSession for the current environment.
+
+    - On Databricks: the session of the job compute.
+    - With databricks-connect installed: a remote session on the workspace, using the
+      standard Databricks auth (env vars or ~/.databrickscfg profile). Falls back to
+      serverless compute when no cluster is configured.
+    - Otherwise: a local session with Delta Lake, for unit tests.
     """
-    spark = SparkSession.builder.getOrCreate() if is_databricks() else _local_session(app_name)
-    for key, value in (conf or {}).items():
-        full_key = key if key.startswith("spark.") else f"spark.{key}"
-        spark.conf.set(full_key, str(value))
-    return spark
+    if is_databricks():
+        return SparkSession.builder.getOrCreate()
+    if has_databricks_connect():
+        return _connect_session()
+    return _local_session(app_name)
+
+
+def _connect_session() -> SparkSession:
+    from databricks.connect import DatabricksSession
+    from databricks.sdk.core import Config
+
+    cfg = Config()
+    if not (cfg.cluster_id or cfg.serverless_compute_id or os.environ.get("SPARK_REMOTE")):
+        os.environ["DATABRICKS_SERVERLESS_COMPUTE_ID"] = "auto"
+    return DatabricksSession.builder.getOrCreate()
 
 
 def _local_session(app_name: str) -> SparkSession:
-    # delta-spark is a dev/local extra only — import lazily so the wheel never needs it.
+    # delta-spark is in the local dependency group only — import lazily.
     from delta import configure_spark_with_delta_pip
 
     builder = (
         SparkSession.builder.appName(app_name)
         .master("local[*]")
         .config("spark.ui.enabled", "false")
+        .config("spark.sql.shuffle.partitions", "4")
         .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
         .config(
             "spark.sql.catalog.spark_catalog",

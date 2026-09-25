@@ -1,38 +1,60 @@
+# Databricks Asset Bundle for {{ project_name }}.
+# Per-environment settings live here (variables per target) and reach the job as parameters.
+# Docs: https://docs.databricks.com/dev-tools/bundles/
 bundle:
   name: {{ project_slug }}
-
-variables:
-  node_type_id:
-    description: "Cluster node type — override per target if needed"
-    default: {{ default_node_type }}
-  num_workers:
-    description: "Number of workers for the job cluster"
-    default: 1
-
-artifacts:
-  {{ package_name }}_whl:
-    type: whl
-    build: uv build --wheel
-    path: .
 
 include:
   - resources/*.yml
 
+artifacts:
+  python_artifact:
+    type: whl
+    build: uv build --wheel
+
+variables:
+  catalog:
+    description: Unity Catalog catalog the job writes to (must exist)
+    default: {{ unity_catalog_name }}
+  schema:
+    description: Schema the job writes to (created if missing)
+  log_level:
+    description: Root log level of the job
+    default: INFO
+{%- if compute == 'job_cluster' %}
+  node_type_id:
+    description: Job cluster node type
+    default: {{ default_node_type }}
+  max_workers:
+    description: Job cluster autoscaling upper bound
+    default: 2
+{%- endif %}
+
 targets:
   dev:
+    # Personal copy: resources prefixed with "[dev <user>]", schedules paused,
+    # tables written to a schema named after you.
     mode: development
     default: true
     workspace:
       host: {{ databricks_host }}
+    variables:
+      schema: dev_${workspace.current_user.short_name}
+      log_level: DEBUG
+{%- if compute == 'job_cluster' %}
+    presets:
+      artifacts_dynamic_version: true  # clusters cache wheels by version
+{%- endif %}
 
   staging:
     mode: production
     workspace:
       host: {{ databricks_host }}  # TODO: set staging workspace host if different
-      root_path: /Workspace/Shared/.bundle/${bundle.name}/${bundle.target}
+      # Deploying identity's folder (the CI service principal): one copy, not writable by all users
+      root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
     variables:
-      num_workers: 2
-    # TODO: run the job as a service principal instead of the deploying identity
+      schema: {{ package_name }}_staging
+    # The job runs as the deploying identity (the CI service principal). To pin another one:
     # run_as:
     #   service_principal_name: <application-id>
     permissions:
@@ -43,10 +65,14 @@ targets:
     mode: production
     workspace:
       host: {{ databricks_host }}  # TODO: set production workspace host if different
-      root_path: /Workspace/Shared/.bundle/${bundle.name}/${bundle.target}
+      # Deploying identity's folder (the CI service principal): one copy, not writable by all users
+      root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
     variables:
-      num_workers: 4
-    # TODO: run the job as a service principal instead of the deploying identity
+      schema: {{ package_name }}
+{%- if compute == 'job_cluster' %}
+      max_workers: 4
+{%- endif %}
+    # The job runs as the deploying identity (the CI service principal). To pin another one:
     # run_as:
     #   service_principal_name: <application-id>
     permissions:

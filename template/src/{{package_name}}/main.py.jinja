@@ -1,4 +1,4 @@
-"""Entry point for Databricks python_wheel_task."""
+"""Entry point of the python_wheel_task defined in resources/{{ package_name }}_job.yml."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import argparse
 import logging
 import sys
 
-from {{ package_name }}.config import ENVS, load_config
+from {{ package_name }}.config import Config
 from {{ package_name }}.jobs.example_job import run as run_example
 from {{ package_name }}.logger import configure_logging
 from {{ package_name }}.spark import get_spark
@@ -18,17 +18,20 @@ _JOBS = {
 }
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="{{ project_name }}")
-    parser.add_argument("--env", default="dev", choices=ENVS)
+    parser.add_argument("--catalog", required=True, help="Unity Catalog catalog (must exist)")
+    parser.add_argument("--schema", required=True, help="Target schema, created if missing")
+    parser.add_argument("--log-level", default="INFO")
     parser.add_argument("--job", default="example", choices=list(_JOBS))
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
-    cfg = load_config(args.env)
-    configure_logging(cfg.app.log_level)
-    spark = get_spark(cfg.app.name, cfg.spark)
+    configure_logging(args.log_level)
+    cfg = Config(catalog=args.catalog, schema=args.schema)
+    spark = get_spark()
 
-    logger.info("Starting job=%s env=%s", args.job, args.env)
+    logger.info("Starting job=%s schema=%s", args.job, cfg.schema_name)
+    spark.sql(f"CREATE SCHEMA IF NOT EXISTS {cfg.schema_name}")
     _JOBS[args.job](spark, cfg)
     logger.info("Job completed successfully")
     return 0

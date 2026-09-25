@@ -1,0 +1,23 @@
+"""Run the example transformations on the real source table (read-only)."""
+
+from __future__ import annotations
+
+from pyspark.sql import SparkSession
+
+from {{ package_name }}.io import read_table
+from {{ package_name }}.jobs.example_job import SOURCE_TABLE
+from {{ package_name }}.transformations.example import add_processing_date, filter_non_null
+
+
+def test_source_table_has_expected_columns(spark: SparkSession):
+    columns = set(read_table(spark, SOURCE_TABLE).columns)
+    assert {"pickup_zip", "dropoff_zip"} <= columns
+
+
+def test_transformations_on_source_sample(spark: SparkSession):
+    df = read_table(spark, SOURCE_TABLE).limit(1000)
+    result = add_processing_date(filter_non_null(df, "pickup_zip", "dropoff_zip"))
+
+    assert result.count() > 0
+    assert result.filter("pickup_zip IS NULL OR dropoff_zip IS NULL").count() == 0
+    assert "processing_date" in result.columns

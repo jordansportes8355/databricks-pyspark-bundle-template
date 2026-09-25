@@ -7,12 +7,13 @@ from collections.abc import Iterator
 import pytest
 from pyspark.sql import SparkSession
 
-from {{ package_name }}.spark import get_spark
+from {{ package_name }}.spark import get_spark, has_databricks_connect
 
 
 @pytest.fixture(scope="session")
 def spark() -> Iterator[SparkSession]:
-    """Local SparkSession for unit tests — Delta enabled, no UI, minimal shuffle."""
-    session = get_spark("test-{{ project_slug }}", {"sql.shuffle.partitions": 1})
+    """Local Spark + Delta for unit tests, remote session with Databricks Connect."""
+    session = get_spark("test-{{ project_slug }}")
     yield session
-    session.stop()
+    if not has_databricks_connect():
+        session.stop()

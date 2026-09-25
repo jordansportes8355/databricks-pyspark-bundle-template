@@ -1,7 +1,7 @@
 resources:
   jobs:
     {{ package_name }}_job:
-      name: "[${bundle.target}] {{ project_name }}"
+      name: "{{ project_name }} (${bundle.target})"
       description: "Main job for {{ project_name }}"
 
       tasks:
@@ -10,19 +10,19 @@ resources:
             package_name: {{ package_name }}
             entry_point: {{ project_slug }}
             parameters:
-              - "--env"
-              - "${bundle.target}"
-
+              - "--catalog"
+              - "${var.catalog}"
+              - "--schema"
+              - "${var.schema}"
+              - "--log-level"
+              - "${var.log_level}"
+{%- if compute == 'serverless' %}
+          environment_key: default
+{%- else %}
+          job_cluster_key: main
           libraries:
-            - whl: ./dist/*.whl
-
-          new_cluster:
-            spark_version: "{{ databricks_runtime }}.x-scala{{ runtime.scala }}"
-            node_type_id: ${var.node_type_id}
-            data_security_mode: SINGLE_USER
-            num_workers: ${var.num_workers}
-            spark_env_vars:
-              APP_ENV: "${bundle.target}"
+            - whl: ../dist/*.whl  # relative to this file
+{%- endif %}
 
       schedule:
         quartz_cron_expression: "0 0 8 * * ?"
@@ -32,3 +32,25 @@ resources:
       email_notifications:
         on_failure:
           - {{ author_email }}
+{%- if compute == 'serverless' %}
+
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: "{{ serverless_environment }}"
+            dependencies:
+              - ../dist/*.whl  # relative to this file
+{%- else %}
+
+      job_clusters:
+        - job_cluster_key: main
+          new_cluster:
+            spark_version: "{{ databricks_runtime }}.x-scala{{ runtime.scala }}"
+            node_type_id: ${var.node_type_id}
+            data_security_mode: DATA_SECURITY_MODE_AUTO
+            autoscale:
+              min_workers: 1
+              max_workers: ${var.max_workers}
+            # spark_conf:
+            #   spark.sql.shuffle.partitions: "auto"
+{%- endif %}

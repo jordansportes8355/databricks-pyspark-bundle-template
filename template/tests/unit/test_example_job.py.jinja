@@ -6,40 +6,26 @@ from unittest.mock import patch
 
 from pyspark.sql import SparkSession
 
-from {{ package_name }}.config import parse_config
-from {{ package_name }}.jobs.example_job import run
+from {{ package_name }}.config import Config
+from {{ package_name }}.jobs.example_job import SOURCE_TABLE, run
+
+JOB = "{{ package_name }}.jobs.example_job"
 
 
-def _make_cfg(catalog: str = "test_cat", schema: str = "test_schema"):
-    return parse_config({"app": {"name": "test"}, "unity_catalog": {"catalog": catalog, "schema": schema}})
-
-
-def test_run_filters_null_ids_and_writes(spark: SparkSession):
+def test_run_filters_trips_without_zip_and_writes(spark: SparkSession):
     source_df = spark.createDataFrame(
-        [(1, "foo"), (2, "bar"), (None, "baz")],
-        ["id", "name"],
+        [(10001, 10002), (None, 10003), (10004, None), (10005, 10006)],
+        ["pickup_zip", "dropoff_zip"],
     )
 
     with (
-        patch("{{ package_name }}.jobs.example_job.read_table", return_value=source_df),
-        patch("{{ package_name }}.jobs.example_job.write_table") as mock_write,
+        patch(f"{JOB}.read_table", return_value=source_df) as mock_read,
+        patch(f"{JOB}.write_table") as mock_write,
     ):
-        run(spark, _make_cfg())
+        run(spark, Config(catalog="my_cat", schema="my_schema"))
 
-    assert mock_write.called
-    written_df = mock_write.call_args[0][0]
+    assert mock_read.call_args[0][1] == SOURCE_TABLE
+    written_df, table = mock_write.call_args[0]
+    assert table == "my_cat.my_schema.trips_processed"
     assert written_df.count() == 2
     assert "processing_date" in written_df.columns
-
-
-def test_run_uses_correct_table_names(spark: SparkSession):
-    source_df = spark.createDataFrame([(1,)], ["id"])
-
-    with (
-        patch("{{ package_name }}.jobs.example_job.read_table", return_value=source_df) as mock_read,
-        patch("{{ package_name }}.jobs.example_job.write_table") as mock_write,
-    ):
-        run(spark, _make_cfg("my_cat", "my_schema"))
-
-    assert mock_read.call_args[0][1] == "my_cat.my_schema.source"
-    assert mock_write.call_args[0][1] == "my_cat.my_schema.output"
