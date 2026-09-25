@@ -1,0 +1,29 @@
+name: Template CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0  # copier needs git history to render the template
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: astral-sh/setup-uv@v10
+        with:
+          python-version: "3.12"
+
+      - name: Lint
+        run: uvx ruff check tests/
+
+      - name: Template tests (incl. generated project unit tests)
+        run: uv run --extra dev pytest

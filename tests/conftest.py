@@ -1,7 +1,9 @@
 """Fixtures for template generation tests."""
+
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -16,25 +18,28 @@ DEFAULT_ANSWERS = {
     # computed defaults accepted as-is
     "project_slug": "test-spark-job",
     "package_name": "test_spark_job",
-    "python_version": "3.11",
     "databricks_runtime": "15.4",
     "cloud_provider": "aws",
 }
 
 
-@pytest.fixture(scope="module")
-def generated_project(tmp_path_factory):
-    """Generate a project from the template into a temp directory."""
+def generate(dst: Path, **overrides: Any) -> Path:
+    """Render the template into ``dst`` with DEFAULT_ANSWERS updated by ``overrides``."""
     import copier
 
-    dst = tmp_path_factory.mktemp("generated")
     copier.run_copy(
         src_path=str(TEMPLATE_ROOT),
         dst_path=str(dst),
-        data=DEFAULT_ANSWERS,
+        data={**DEFAULT_ANSWERS, **overrides},
         defaults=True,
         overwrite=True,
         unsafe=True,  # needed if _tasks is ever added to copier.yml
         vcs_ref="HEAD",  # always use latest commit, not the most recent tag
     )
     return dst
+
+
+@pytest.fixture(scope="module")
+def generated_project(tmp_path_factory) -> Path:
+    """Generate a project from the template with the default answers."""
+    return generate(tmp_path_factory.mktemp("generated"))

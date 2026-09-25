@@ -5,11 +5,14 @@ variables:
   node_type_id:
     description: "Cluster node type — override per target if needed"
     default: {{ default_node_type }}
+  num_workers:
+    description: "Number of workers for the job cluster"
+    default: 1
 
 artifacts:
   {{ package_name }}_whl:
     type: whl
-    build: uv build
+    build: uv build --wheel
     path: .
 
 include:
@@ -25,11 +28,27 @@ targets:
   staging:
     mode: production
     workspace:
-      host: {{ databricks_host }}
-      # TODO: set staging workspace host if different
+      host: {{ databricks_host }}  # TODO: set staging workspace host if different
+      root_path: /Workspace/Shared/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      num_workers: 2
+    # TODO: run the job as a service principal instead of the deploying identity
+    # run_as:
+    #   service_principal_name: <application-id>
+    permissions:
+      - level: CAN_MANAGE
+        user_name: {{ author_email }}
 
   prod:
     mode: production
     workspace:
-      host: {{ databricks_host }}
-      # TODO: set production workspace host if different
+      host: {{ databricks_host }}  # TODO: set production workspace host if different
+      root_path: /Workspace/Shared/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      num_workers: 4
+    # TODO: run the job as a service principal instead of the deploying identity
+    # run_as:
+    #   service_principal_name: <application-id>
+    permissions:
+      - level: CAN_MANAGE
+        user_name: {{ author_email }}

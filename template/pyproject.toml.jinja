@@ -9,26 +9,27 @@ description = "{{ project_name }}"
 authors = [{ name = "{{ author_name }}", email = "{{ author_email }}" }]
 requires-python = ">={{ python_version }}"
 dependencies = [
-    "pydantic-settings>=2.0",
+    "pydantic>=2.0",
     "pyyaml>=6.0",
-    "python-json-logger>=2.0",
+    "python-json-logger>=3.1",
 ]
 
 [project.scripts]
 {{ project_slug }} = "{{ package_name }}.main:main"
 
 [project.optional-dependencies]
-# Adjust pyspark version to match your DBR: 14/15 → 3.5, 13 → 3.4
+# Pinned to the Spark / Delta versions shipped with DBR {{ databricks_runtime }}.
+# pyspark is provided by the cluster, so it is never a runtime dependency.
 local = [
-    "pyspark>=3.5",
-    "delta-spark>=3.2",
+    "pyspark{{ spark_version_spec }}",
+    "delta-spark{{ delta_version_spec }}",
 ]
 dev = [
-    "pyspark>=3.5",
-    "delta-spark>=3.2",
+    "pyspark{{ spark_version_spec }}",
+    "delta-spark{{ delta_version_spec }}",
     "pytest>=8.0",
     "chispa>=0.9",
-    "ruff>=0.6",
+    "ruff>=0.16",
     "pre-commit>=3.0",
 ]
 

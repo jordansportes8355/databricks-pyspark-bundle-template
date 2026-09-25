@@ -1,4 +1,5 @@
 """Example job: read → transform → write."""
+
 from __future__ import annotations
 
 import logging
@@ -30,4 +31,4 @@ def run(spark: SparkSession, cfg: Config) -> None:
 
     logger.info("Writing to %s", output)
     write_table(df, output, mode="overwrite")
-    logger.info("Written %d rows", df.count())
+    logger.info("Done writing %s", output)

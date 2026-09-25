@@ -1,0 +1,29 @@
+"""Delta round-trip tests — prove the local session really has Delta Lake."""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+from pyspark.sql import SparkSession
+
+from {{ package_name }}.io.reader import read_path, read_table
+from {{ package_name }}.io.writer import write_table
+
+
+def test_delta_path_roundtrip(spark: SparkSession, tmp_path: Path):
+    path = str(tmp_path / "delta_table")
+    spark.createDataFrame([(1, "a"), (2, "b")], ["id", "name"]).write.format("delta").save(path)
+
+    assert read_path(spark, path).count() == 2
+
+
+def test_write_table_then_read_table(spark: SparkSession):
+    table = "default.test_io_roundtrip"
+    df = spark.createDataFrame([(1, "a"), (2, "b"), (3, "c")], ["id", "name"])
+
+    try:
+        write_table(df, table)
+        write_table(df.limit(1), table, mode="append")
+        assert read_table(spark, table).count() == 4
+    finally:
+        spark.sql(f"DROP TABLE IF EXISTS {table}")

@@ -1,7 +1,11 @@
 """Tests for config loading and merging."""
+
 from __future__ import annotations
 
-from {{ package_name }}.config import _deep_merge, load_config
+import pytest
+from pydantic import ValidationError
+
+from {{ package_name }}.config import Config, _deep_merge, load_config
 
 
 def test_deep_merge_overrides_scalar():
@@ -33,3 +37,12 @@ def test_load_config_prod_catalog():
     cfg = load_config("prod")
     assert not cfg.unity_catalog.catalog.endswith("_dev")
     assert not cfg.unity_catalog.catalog.endswith("_staging")
+
+
+def test_load_config_applies_spark_overlay():
+    assert load_config("dev").spark["sql.shuffle.partitions"] == 8
+
+
+def test_config_requires_schema():
+    with pytest.raises(ValidationError):
+        Config(app={"name": "x"}, unity_catalog={"catalog": "c"})

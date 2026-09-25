@@ -1,7 +1,7 @@
 [project]
 name = "pyspark-template"
 version = "0.1.0"
-description = "Copier template for PySpark + Databricks Asset Bundles (AWS)"
+description = "Copier template for PySpark + Databricks Asset Bundles (AWS, Azure, GCP)"
 requires-python = ">=3.11"
 dependencies = []
 
@@ -9,14 +9,14 @@ dependencies = []
 dev = [
     "copier>=9.3",
     "pytest>=8.0",
-    "pyspark>=3.5",
-    "delta-spark>=3.2",
-    "ruff>=0.6",
+    "pyyaml>=6.0",
+    "ruff>=0.16",
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-v"
+markers = ["slow: renders a project and runs its unit tests (needs Java)"]
 
 [tool.ruff]
 line-length = 120

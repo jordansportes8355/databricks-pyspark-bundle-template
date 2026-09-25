@@ -1,6 +1,6 @@
 resources:
   jobs:
-    {{ project_slug }}_job:
+    {{ package_name }}_job:
       name: "[${bundle.target}] {{ project_name }}"
       description: "Main job for {{ project_name }}"
 
@@ -17,10 +17,10 @@ resources:
             - whl: ./dist/*.whl
 
           new_cluster:
-            spark_version: "{{ databricks_runtime }}.x-scala2.12"
+            spark_version: "{{ databricks_runtime }}.x-scala{{ scala_version }}"
             node_type_id: ${var.node_type_id}
             data_security_mode: SINGLE_USER
-            num_workers: 2  # TODO: tune per target (dev→1, prod→4)
+            num_workers: ${var.num_workers}
             spark_env_vars:
               APP_ENV: "${bundle.target}"
 

@@ -1,0 +1,51 @@
+# {{ project_name }}
+
+PySpark job deployed on Databricks (DBR {{ databricks_runtime }} LTS, Python {{ python_version }}) with Databricks Asset Bundles.
+
+## Prerequisites
+
+- [uv](https://docs.astral.sh/uv/)
+- Java {{ java_version }} (for local Spark)
+- [Databricks CLI](https://docs.databricks.com/dev-tools/cli/) ≥ 0.218, authenticated against `{{ databricks_host }}`
+
+## Getting started
+
+```bash
+make install                # uv sync --extra dev
+uv run pre-commit install
+make test                   # unit tests on a local Spark + Delta session
+```
+
+## Layout
+
+| Path | Role |
+| --- | --- |
+| `src/{{ package_name }}/transformations/` | Pure DataFrame → DataFrame functions, unit-tested |
+| `src/{{ package_name }}/io/` | Unity Catalog / Delta readers and writers |
+| `src/{{ package_name }}/jobs/` | Jobs wiring I/O and transformations |
+| `src/{{ package_name }}/conf/` | `base.yaml` + per-env overlays (`dev`, `staging`, `prod`) |
+| `resources/` | Databricks job definitions |
+
+Add a job by creating a module in `jobs/` exposing `run(spark, cfg)` and registering it in `_JOBS` in `main.py`.
+
+## Configuration
+
+`load_config(env)` deep-merges `conf/base.yaml` with `conf/<env>.yaml`. The `spark` section is applied
+as runtime Spark confs at startup (keys without the `spark.` prefix).
+
+## Deployment
+
+| Target | How |
+| --- | --- |
+| dev | `make deploy-dev` then `make run-dev` (resources prefixed with your username) |
+| staging | automatic on push to `main` |
+| prod | automatic on `v*` tag, gated by the `production` GitHub environment |
+
+CI authenticates with a service principal (OAuth M2M): set `DATABRICKS_HOST`, `DATABRICKS_CLIENT_ID`
+and `DATABRICKS_CLIENT_SECRET` in the `staging` and `production` GitHub environments.
+
+## Updating from the template
+
+```bash
+uvx copier update --trust
+```

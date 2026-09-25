@@ -1,25 +1,48 @@
-"""SparkSession factory — active session on Databricks, local builder for tests."""
+"""SparkSession factory — cluster session on Databricks, local Delta session elsewhere."""
+
 from __future__ import annotations
+
+import os
+from typing import Any
 
 from pyspark.sql import SparkSession
 
 
-def get_spark(app_name: str = "{{ project_name }}") -> SparkSession:
-    """Return the active SparkSession if one exists (Databricks runtime), otherwise
-    create a local session with Delta Lake extensions (local development / CI).
+def is_databricks() -> bool:
+    """True when running on a Databricks cluster (set by the runtime)."""
+    return "DATABRICKS_RUNTIME_VERSION" in os.environ
+
+
+def get_spark(app_name: str = "{{ project_name }}", conf: dict[str, Any] | None = None) -> SparkSession:
+    """Return a SparkSession and apply runtime SQL confs.
+
+    On Databricks the cluster session is reused. Locally (dev / CI) a session is
+    built with the Delta Lake jars pulled in by ``delta-spark``.
+
+    Args:
+        app_name: Application name for local sessions.
+        conf: Runtime confs, keys with or without the ``spark.`` prefix
+            (e.g. the ``spark`` section of the YAML config).
     """
-    active = SparkSession.getActiveSession()
-    if active is not None:
-        return active
-    return (
+    spark = SparkSession.builder.getOrCreate() if is_databricks() else _local_session(app_name)
+    for key, value in (conf or {}).items():
+        full_key = key if key.startswith("spark.") else f"spark.{key}"
+        spark.conf.set(full_key, str(value))
+    return spark
+
+
+def _local_session(app_name: str) -> SparkSession:
+    # delta-spark is a dev/local extra only — import lazily so the wheel never needs it.
+    from delta import configure_spark_with_delta_pip
+
+    builder = (
         SparkSession.builder.appName(app_name)
         .master("local[*]")
-        .config("spark.sql.shuffle.partitions", "4")
         .config("spark.ui.enabled", "false")
         .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
         .config(
             "spark.sql.catalog.spark_catalog",
             "org.apache.spark.sql.delta.catalog.DeltaCatalog",
         )
-        .getOrCreate()
     )
+    return configure_spark_with_delta_pip(builder).getOrCreate()
