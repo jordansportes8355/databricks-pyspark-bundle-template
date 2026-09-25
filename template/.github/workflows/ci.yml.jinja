@@ -9,7 +9,8 @@ on:
 
 concurrency:
   group: {% raw %}${{ github.workflow }}-${{ github.ref }}{% endraw %}
-  cancel-in-progress: true
+  # Only cancel PR runs: killing a deploy can leave the bundle deployment lock behind
+  cancel-in-progress: {% raw %}${{ github.event_name == 'pull_request' }}{% endraw %}
 
 # Databricks auth: OAuth machine-to-machine with a service principal.
 # Create the secrets DATABRICKS_HOST, DATABRICKS_CLIENT_ID and DATABRICKS_CLIENT_SECRET

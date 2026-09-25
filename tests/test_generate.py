@@ -90,6 +90,7 @@ def test_ci_yml_keeps_github_expressions(generated_project: Path):
     content = (generated_project / ".github/workflows/ci.yml").read_text()
     assert "${{ secrets.DATABRICKS_HOST }}" in content
     assert "raw" not in content  # jinja raw tags must not leak into output
+    assert "cancel-in-progress: ${{ github.event_name == 'pull_request' }}" in content
 
 
 def test_answers_file_enables_copier_update(generated_project: Path):
@@ -210,6 +211,9 @@ def test_bundle_validates(generated_project: Path, databricks_api: str, tmp_path
     expected_schema = {"dev": "dev_jane_doe", "staging": "test_spark_job_staging", "prod": "test_spark_job"}
     assert params[params.index("--schema") + 1] == expected_schema[target]
     assert params[params.index("--catalog") + 1] == "test_catalog"
+
+    schedule = resolved["resources"]["jobs"]["test_spark_job_job"]["schedule"]
+    assert schedule["pause_status"] == ("UNPAUSED" if target == "prod" else "PAUSED")
 
     environments = resolved["resources"]["jobs"]["test_spark_job_job"].get("environments", [])
     wheels = [lib["whl"] for lib in task.get("libraries", [])]

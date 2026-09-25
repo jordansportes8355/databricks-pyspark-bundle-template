@@ -16,6 +16,10 @@ Databricks-only, bundle-first:
 Fixes:
 - Wheel path in the job resource resolved to `resources/dist/*.whl` (now `../dist/*.whl`)
 - staging / prod `root_path` in `/Workspace/Shared` was writable by all users; now the deploying identity's folder
+- Job schedule hardcoded `PAUSED`: prod never ran on schedule and every deploy re-paused it; now a
+  `pause_status` bundle variable, `UNPAUSED` in prod
+- Generated CI cancelled in-progress runs on `main` too, which could kill a deploy and leave the bundle lock;
+  now only PR runs are cancelled
 
 Tests:
 - Both compute types rendered and checked; `databricks bundle validate` run for every target against a fake

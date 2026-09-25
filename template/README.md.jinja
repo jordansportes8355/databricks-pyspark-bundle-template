@@ -47,6 +47,7 @@ and passed to the job as parameters:
 | `catalog` | `{{ unity_catalog_name }}` | `{{ unity_catalog_name }}` | `{{ unity_catalog_name }}` |
 | `schema` | `dev_<you>` | `{{ package_name }}_staging` | `{{ package_name }}` |
 | `log_level` | `DEBUG` | `INFO` | `INFO` |
+| `pause_status` | `PAUSED` | `PAUSED` | `UNPAUSED` |
 
 To add a setting: declare a variable in `databricks.yml`, pass it in `resources/{{ package_name }}_job.yml`,
 then read it in `main.py`.

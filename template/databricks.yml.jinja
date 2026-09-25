@@ -21,6 +21,9 @@ variables:
   log_level:
     description: Root log level of the job
     default: INFO
+  pause_status:
+    description: Schedule state (PAUSED / UNPAUSED), re-applied on every deploy
+    default: PAUSED
 {%- if compute == 'job_cluster' %}
   node_type_id:
     description: Job cluster node type
@@ -69,6 +72,7 @@ targets:
       root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
     variables:
       schema: {{ package_name }}
+      pause_status: UNPAUSED
 {%- if compute == 'job_cluster' %}
       max_workers: 4
 {%- endif %}
