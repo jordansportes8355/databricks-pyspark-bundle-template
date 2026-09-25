@@ -1,11 +1,11 @@
 [project]
 name = "pyspark-template"
-version = "0.1.0"
+version = "0.2.0"
 description = "Copier template for PySpark + Databricks Asset Bundles (AWS, Azure, GCP)"
 requires-python = ">=3.11"
 dependencies = []
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
     "copier>=9.3",
     "pytest>=8.0",
@@ -17,6 +17,7 @@ dev = [
 testpaths = ["tests"]
 addopts = "-v"
 markers = ["slow: renders a project and runs its unit tests (needs Java)"]
+filterwarnings = ["ignore::copier.errors.DirtyLocalWarning"]
 
 [tool.ruff]
 line-length = 120

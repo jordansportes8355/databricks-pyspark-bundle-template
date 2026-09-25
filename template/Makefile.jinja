@@ -1,32 +1,26 @@
-.PHONY: install lint format test build deploy-dev deploy-staging deploy-prod run-dev clean
+.PHONY: install lint format test deploy-dev run-dev clean
 
 install:
-	uv sync --extra dev
+	uv sync
+	uv run pre-commit install
 
 lint:
 	uv run ruff check src/ tests/
+	uv run ruff format --check src/ tests/
 
 format:
 	uv run ruff format src/ tests/
 	uv run ruff check --fix src/ tests/
 
 test:
-	uv run pytest tests/unit/ -v
+	uv run pytest tests/unit/
 
-build:
-	uv build
-
+# staging / prod are deployed by CI only (push to main, v* tag)
 deploy-dev:
 	databricks bundle deploy --target dev
 
-deploy-staging:
-	databricks bundle deploy --target staging
-
-deploy-prod:
-	databricks bundle deploy --target prod
-
-run-dev:
+run-dev: deploy-dev
 	databricks bundle run --target dev {{ package_name }}_job
 
 clean:
-	rm -rf dist/ .pytest_cache/ __pycache__ src/*.egg-info
+	rm -rf dist/ .pytest_cache/ spark-warehouse/ metastore_db/ derby.log

@@ -6,7 +6,7 @@ import argparse
 import logging
 import sys
 
-from {{ package_name }}.config import load_config
+from {{ package_name }}.config import ENVS, load_config
 from {{ package_name }}.jobs.example_job import run as run_example
 from {{ package_name }}.logger import configure_logging
 from {{ package_name }}.spark import get_spark
@@ -20,7 +20,7 @@ _JOBS = {
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="{{ project_name }}")
-    parser.add_argument("--env", default="dev", choices=["dev", "staging", "prod"])
+    parser.add_argument("--env", default="dev", choices=ENVS)
     parser.add_argument("--job", default="example", choices=list(_JOBS))
     args = parser.parse_args()
 

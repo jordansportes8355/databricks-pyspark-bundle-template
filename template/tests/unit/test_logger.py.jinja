@@ -1,0 +1,17 @@
+"""Tests for logging configuration."""
+
+from __future__ import annotations
+
+import json
+import logging
+
+from {{ package_name }}.logger import configure_logging
+
+
+def test_configure_logging_emits_json(capsys):
+    configure_logging("debug")
+    logging.getLogger("{{ package_name }}.test").debug("hello")
+
+    record = json.loads(capsys.readouterr().out.strip().splitlines()[-1])
+    assert record["message"] == "hello"
+    assert record["levelname"] == "DEBUG"

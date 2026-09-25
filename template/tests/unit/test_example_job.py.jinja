@@ -2,18 +2,16 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from pyspark.sql import SparkSession
 
+from {{ package_name }}.config import parse_config
 from {{ package_name }}.jobs.example_job import run
 
 
-def _make_cfg(catalog: str = "test_cat", schema: str = "test_schema") -> MagicMock:
-    cfg = MagicMock()
-    cfg.unity_catalog.catalog = catalog
-    cfg.unity_catalog.schema_name = schema
-    return cfg
+def _make_cfg(catalog: str = "test_cat", schema: str = "test_schema"):
+    return parse_config({"app": {"name": "test"}, "unity_catalog": {"catalog": catalog, "schema": schema}})
 
 
 def test_run_filters_null_ids_and_writes(spark: SparkSession):

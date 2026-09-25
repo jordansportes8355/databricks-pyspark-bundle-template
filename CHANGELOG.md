@@ -1,13 +1,25 @@
 # Changelog
 
-## Unreleased
+## v0.2.0
 
+Lighter generated project:
+- Config parsed into frozen dataclasses (DBR 14.3/15.4 ship pydantic 1.x): unknown or missing keys fail fast
+- `io/reader.py` + `io/writer.py` merged into `io.py`; logging configured in Python (no `logging.yaml`); no `prod.yaml` (base = prod)
+- `[dependency-groups] dev` instead of extras: plain `uv sync` / `uv run pytest`; `chispa` removed
+- Makefile trimmed; staging / prod deploys only through CI
+- Runtime stack defined once in a `runtime` matrix in `copier.yml`
+
+Fixes and additions:
+- DBR 18 LTS (Spark 4.1, Java 21)
+- `.python-version` generated so local Python matches the cluster
+- `get_secret` uses the cluster session on Databricks, no silent env-var fallback there
+- Tests for secrets and logging
 - Generated project passes `ruff format --check` (CI was red on first push)
 - `databricks_runtime` is now a choice of LTS versions; Python, PySpark, Delta and Scala versions are derived from it
 - `.copier-answers.yml` generated so projects can use `copier update`
 - Local Spark session loads Delta jars via `configure_spark_with_delta_pip`; Delta round-trip tests added
 - `get_spark` detects Databricks via `DATABRICKS_RUNTIME_VERSION` and applies the `spark` config section
-- Config uses plain pydantic models; `unity_catalog.schema` is now required
+- `unity_catalog.schema` is now required
 - Job resource renamed `<package_name>_job`; `num_workers` per target; `root_path` and `permissions` on staging/prod
 - CI: pinned actions, explicit Java, OAuth service principal auth, prod deploy on `v*` tags
 - Answer validators, README and `.env.example` in generated project, template CI and README

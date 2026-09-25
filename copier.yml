@@ -54,6 +54,7 @@ databricks_runtime:
     "15.4 LTS (Spark 3.5, Python 3.11)": "15.4"
     "16.4 LTS (Spark 3.5, Python 3.12)": "16.4"
     "17.3 LTS (Spark 4.0, Python 3.12)": "17.3"
+    "18 LTS (Spark 4.1, Python 3.12)": "18"
 
 # ── Cloud / Databricks ────────────────────────────────────────────────────────
 
@@ -84,44 +85,20 @@ unity_catalog_name:
     {% endif %}
 
 # ── Computed (hidden) ─────────────────────────────────────────────────────────
+# Single source of truth for the stack of each runtime: add a new DBR here.
 
-python_version:
-  type: str
+runtime:
+  type: yaml
   when: false
   default: >-
-    {%- if databricks_runtime == '14.3' -%}3.10
-    {%- elif databricks_runtime == '15.4' -%}3.11
-    {%- else -%}3.12
-    {%- endif -%}
-
-spark_version_spec:
-  type: str
-  when: false
-  default: >-
-    {%- if databricks_runtime == '17.3' -%}>=4.0,<4.1
-    {%- else -%}>=3.5,<3.6
-    {%- endif -%}
-
-delta_version_spec:
-  type: str
-  when: false
-  default: >-
-    {%- if databricks_runtime == '17.3' -%}>=4.0,<4.1
-    {%- else -%}>=3.2,<3.4
-    {%- endif -%}
-
-scala_version:
-  type: str
-  when: false
-  default: >-
-    {%- if databricks_runtime == '17.3' -%}2.13
-    {%- else -%}2.12
-    {%- endif -%}
-
-java_version:
-  type: str
-  when: false
-  default: "17"
+    {%- set matrix = {
+      "14.3": {"python": "3.10", "pyspark": ">=3.5,<3.6", "delta": ">=3.2,<3.4", "scala": "2.12", "java": "17"},
+      "15.4": {"python": "3.11", "pyspark": ">=3.5,<3.6", "delta": ">=3.2,<3.4", "scala": "2.12", "java": "17"},
+      "16.4": {"python": "3.12", "pyspark": ">=3.5,<3.6", "delta": ">=3.2,<3.4", "scala": "2.12", "java": "17"},
+      "17.3": {"python": "3.12", "pyspark": ">=4.0,<4.1", "delta": ">=4.0,<4.1", "scala": "2.13", "java": "17"},
+      "18":   {"python": "3.12", "pyspark": ">=4.1,<4.2", "delta": ">=4.2,<4.3", "scala": "2.13", "java": "21"},
+    } -%}
+    {{ matrix[databricks_runtime] | to_json }}
 
 default_node_type:
   type: str

@@ -6,8 +6,7 @@ from pathlib import Path
 
 from pyspark.sql import SparkSession
 
-from {{ package_name }}.io.reader import read_path, read_table
-from {{ package_name }}.io.writer import write_table
+from {{ package_name }}.io import read_path, read_table, write_table
 
 
 def test_delta_path_roundtrip(spark: SparkSession, tmp_path: Path):

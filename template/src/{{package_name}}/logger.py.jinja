@@ -1,22 +1,26 @@
-"""Logging configuration from conf/logging.yaml."""
+"""JSON logging to stdout, picked up by the Databricks driver logs."""
 
 from __future__ import annotations
 
-import logging
 import logging.config
-from pathlib import Path
-
-import yaml
-
-_LOGGING_YAML = Path(__file__).parent / "conf" / "logging.yaml"
 
 
 def configure_logging(level: str = "INFO") -> None:
-    """Apply conf/logging.yaml then set root level to ``level``."""
-    if _LOGGING_YAML.exists():
-        with _LOGGING_YAML.open(encoding="utf-8") as f:
-            config = yaml.safe_load(f)
-        if config:
-            logging.config.dictConfig(config)
-
-    logging.getLogger().setLevel(getattr(logging, level.upper(), logging.INFO))
+    """Configure the root logger with a JSON formatter at ``level``."""
+    logging.config.dictConfig(
+        {
+            "version": 1,
+            "disable_existing_loggers": False,
+            "formatters": {
+                "json": {
+                    "()": "pythonjsonlogger.json.JsonFormatter",
+                    "format": "%(asctime)s %(name)s %(levelname)s %(message)s",
+                },
+            },
+            "handlers": {
+                "console": {"class": "logging.StreamHandler", "formatter": "json", "stream": "ext://sys.stdout"},
+            },
+            "root": {"level": level.upper(), "handlers": ["console"]},
+            "loggers": {"py4j": {"level": "WARNING"}, "pyspark": {"level": "WARNING"}},
+        }
+    )

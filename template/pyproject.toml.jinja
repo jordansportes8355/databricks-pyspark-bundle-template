@@ -7,9 +7,8 @@ name = "{{ project_slug }}"
 version = "0.1.0"
 description = "{{ project_name }}"
 authors = [{ name = "{{ author_name }}", email = "{{ author_email }}" }]
-requires-python = ">={{ python_version }}"
+requires-python = ">={{ runtime.python }}"
 dependencies = [
-    "pydantic>=2.0",
     "pyyaml>=6.0",
     "python-json-logger>=3.1",
 ]
@@ -17,18 +16,12 @@ dependencies = [
 [project.scripts]
 {{ project_slug }} = "{{ package_name }}.main:main"
 
-[project.optional-dependencies]
-# Pinned to the Spark / Delta versions shipped with DBR {{ databricks_runtime }}.
-# pyspark is provided by the cluster, so it is never a runtime dependency.
-local = [
-    "pyspark{{ spark_version_spec }}",
-    "delta-spark{{ delta_version_spec }}",
-]
+[dependency-groups]
+# pyspark / delta-spark are provided by the cluster: local-only, pinned to DBR {{ databricks_runtime }}.
 dev = [
-    "pyspark{{ spark_version_spec }}",
-    "delta-spark{{ delta_version_spec }}",
+    "pyspark{{ runtime.pyspark }}",
+    "delta-spark{{ runtime.delta }}",
     "pytest>=8.0",
-    "chispa>=0.9",
     "ruff>=0.16",
     "pre-commit>=3.0",
 ]
@@ -39,7 +32,7 @@ packages = ["src/{{ package_name }}"]
 [tool.ruff]
 line-length = 120
 src = ["src"]
-target-version = "py{{ python_version | replace('.', '') }}"
+target-version = "py{{ runtime.python | replace('.', '') }}"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP"]

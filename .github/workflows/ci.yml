@@ -26,4 +26,4 @@ jobs:
         run: uvx ruff check tests/
 
       - name: Template tests (incl. generated project unit tests)
-        run: uv run --extra dev pytest
+        run: uv run pytest

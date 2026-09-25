@@ -361,10 +361,10 @@ wheels = [
 
 [[package]]
 name = "pyspark-template"
-version = "0.1.0"
+version = "0.2.0"
 source = { virtual = "." }
 
-[package.optional-dependencies]
+[package.dev-dependencies]
 dev = [
     { name = "copier" },
     { name = "pytest" },
@@ -373,13 +373,14 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [
-    { name = "copier", marker = "extra == 'dev'", specifier = ">=9.3" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
-    { name = "pyyaml", marker = "extra == 'dev'", specifier = ">=6.0" },
-    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.16" },
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "copier", specifier = ">=9.3" },
+    { name = "pytest", specifier = ">=8.0" },
+    { name = "pyyaml", specifier = ">=6.0" },
+    { name = "ruff", specifier = ">=0.16" },
 ]
-provides-extras = ["dev"]
 
 [[package]]
 name = "pytest"

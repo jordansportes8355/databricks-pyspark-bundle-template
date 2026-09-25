@@ -1,8 +1,18 @@
-"""Delta table writers — Unity Catalog."""
+"""Delta I/O helpers — Unity Catalog tables and raw paths."""
 
 from __future__ import annotations
 
-from pyspark.sql import DataFrame
+from pyspark.sql import DataFrame, SparkSession
+
+
+def read_table(spark: SparkSession, table: str) -> DataFrame:
+    """Read a Delta table from Unity Catalog (catalog.schema.table)."""
+    return spark.read.table(table)
+
+
+def read_path(spark: SparkSession, path: str) -> DataFrame:
+    """Read Delta from an explicit path (S3, ADLS, GCS or UC Volume)."""
+    return spark.read.format("delta").load(path)
 
 
 def write_table(

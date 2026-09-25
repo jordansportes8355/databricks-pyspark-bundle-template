@@ -3,46 +3,49 @@
 from __future__ import annotations
 
 import pytest
-from pydantic import ValidationError
 
-from {{ package_name }}.config import Config, _deep_merge, load_config
+from {{ package_name }}.config import _deep_merge, load_config, parse_config
+
+VALID = {"app": {"name": "x"}, "unity_catalog": {"catalog": "c", "schema": "s"}}
 
 
-def test_deep_merge_overrides_scalar():
+def test_deep_merge_overrides_nested_scalar():
     base = {"a": 1, "b": {"c": 2, "d": 3}}
-    result = _deep_merge(base, {"b": {"c": 99}})
-    assert result == {"a": 1, "b": {"c": 99, "d": 3}}
+    assert _deep_merge(base, {"b": {"c": 99}, "e": 4}) == {"a": 1, "b": {"c": 99, "d": 3}, "e": 4}
 
 
-def test_deep_merge_adds_new_keys():
-    assert _deep_merge({"a": 1}, {"b": 2}) == {"a": 1, "b": 2}
+@pytest.mark.parametrize(("env", "catalog_suffix"), [("dev", "_dev"), ("staging", "_staging"), ("prod", "")])
+def test_load_config_catalog_per_env(env: str, catalog_suffix: str):
+    catalog = load_config(env).unity_catalog.catalog
+    assert catalog == "{{ unity_catalog_name }}" + catalog_suffix
 
 
-def test_deep_merge_empty_override():
-    base = {"a": {"x": 1}}
-    assert _deep_merge(base, {}) == base
-
-
-def test_load_config_dev_log_level():
+def test_load_config_dev_overlay():
     cfg = load_config("dev")
     assert cfg.app.log_level == "DEBUG"
+    assert cfg.spark["sql.shuffle.partitions"] == 8
 
 
-def test_load_config_dev_catalog():
-    cfg = load_config("dev")
-    assert cfg.unity_catalog.catalog.endswith("_dev")
+def test_load_config_rejects_unknown_env():
+    with pytest.raises(ValueError, match="Unknown env"):
+        load_config("prd")
 
 
-def test_load_config_prod_catalog():
-    cfg = load_config("prod")
-    assert not cfg.unity_catalog.catalog.endswith("_dev")
-    assert not cfg.unity_catalog.catalog.endswith("_staging")
+def test_parse_config_valid():
+    cfg = parse_config(VALID)
+    assert cfg.unity_catalog.schema == "s"
+    assert cfg.spark == {}
 
 
-def test_load_config_applies_spark_overlay():
-    assert load_config("dev").spark["sql.shuffle.partitions"] == 8
-
-
-def test_config_requires_schema():
-    with pytest.raises(ValidationError):
-        Config(app={"name": "x"}, unity_catalog={"catalog": "c"})
+@pytest.mark.parametrize(
+    ("raw", "error"),
+    [
+        ({**VALID, "unity_catalg": {}}, "Unknown key"),
+        ({**VALID, "app": {"name": "x", "log_lvl": "INFO"}}, "Unknown key"),
+        ({**VALID, "unity_catalog": {"catalog": "c"}}, "schema"),
+        ({"app": {"name": "x"}}, "missing"),
+    ],
+)
+def test_parse_config_rejects_invalid(raw: dict, error: str):
+    with pytest.raises(ValueError, match=error):
+        parse_config(raw)
