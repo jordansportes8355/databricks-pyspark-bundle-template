@@ -58,8 +58,8 @@ def test_databricks_yml_aws_node_type(generated_project: Path):
     assert "m5.xlarge" in content
 
 
-def test_databricks_yml_runtime(generated_project: Path):
-    content = (generated_project / "databricks.yml").read_text()
+def test_job_yml_runtime(generated_project: Path):
+    content = (generated_project / "resources/test-spark-job_job.yml").read_text()
     assert "15.4" in content
 
 

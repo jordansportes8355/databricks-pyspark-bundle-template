@@ -42,6 +42,7 @@ target-version = "py{{ python_version | replace('.', '') }}"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP"]
+ignore = ["N812"]  # PySpark convention: `from pyspark.sql import functions as F`
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
