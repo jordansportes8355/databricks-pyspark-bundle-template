@@ -1,0 +1,72 @@
+_subdirectory: template
+_templates_suffix: .jinja
+
+# ── Project identity ──────────────────────────────────────────────────────────
+
+project_name:
+  type: str
+  help: "Human-readable project name (e.g. 'Customer Churn Prediction')"
+
+project_slug:
+  type: str
+  help: "Bundle / repo slug — lowercase, alphanumeric, dashes only"
+  default: "{{ project_name | lower | replace(' ', '-') | replace('_', '-') }}"
+
+package_name:
+  type: str
+  help: "Python package name (snake_case, no dashes)"
+  default: "{{ project_slug | replace('-', '_') }}"
+
+author_name:
+  type: str
+  help: "Your full name"
+
+author_email:
+  type: str
+  help: "Your email address"
+
+# ── Runtime ───────────────────────────────────────────────────────────────────
+
+python_version:
+  type: str
+  help: "Python version"
+  default: "3.11"
+  choices:
+    - "3.10"
+    - "3.11"
+    - "3.12"
+
+databricks_runtime:
+  type: str
+  help: "Databricks Runtime version (e.g. '15.4', '14.3')"
+  default: "15.4"
+
+# ── Cloud / Databricks ────────────────────────────────────────────────────────
+
+cloud_provider:
+  type: str
+  help: "Cloud provider hosting your Databricks workspace"
+  default: "aws"
+  choices:
+    - aws
+    - azure
+    - gcp
+
+databricks_host:
+  type: str
+  help: "Databricks workspace URL (https://xxx.cloud.databricks.com)"
+
+unity_catalog_name:
+  type: str
+  help: "Unity Catalog catalog name"
+  default: "{{ package_name }}"
+
+# ── Computed (hidden) ─────────────────────────────────────────────────────────
+
+default_node_type:
+  when: false
+  default: >-
+    {%- if cloud_provider == 'aws' -%}m5.xlarge
+    {%- elif cloud_provider == 'azure' -%}Standard_DS3_v2
+    {%- else -%}n2-standard-4
+    {%- endif -%}

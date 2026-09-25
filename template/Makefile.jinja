@@ -1,0 +1,32 @@
+.PHONY: install lint format test build deploy-dev deploy-staging deploy-prod run-dev clean
+
+install:
+	uv sync --extra dev
+
+lint:
+	uv run ruff check src/ tests/
+
+format:
+	uv run ruff format src/ tests/
+	uv run ruff check --fix src/ tests/
+
+test:
+	uv run pytest tests/unit/ -v
+
+build:
+	uv build
+
+deploy-dev:
+	databricks bundle deploy --target dev
+
+deploy-staging:
+	databricks bundle deploy --target staging
+
+deploy-prod:
+	databricks bundle deploy --target prod
+
+run-dev:
+	databricks bundle run --target dev {{ project_slug }}_job
+
+clean:
+	rm -rf dist/ .pytest_cache/ __pycache__ src/*.egg-info

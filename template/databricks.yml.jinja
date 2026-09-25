@@ -1,0 +1,35 @@
+bundle:
+  name: {{ project_slug }}
+
+variables:
+  node_type_id:
+    description: "Cluster node type — override per target if needed"
+    default: {{ default_node_type }}
+
+artifacts:
+  {{ package_name }}_whl:
+    type: whl
+    build: uv build
+    path: .
+
+include:
+  - resources/*.yml
+
+targets:
+  dev:
+    mode: development
+    default: true
+    workspace:
+      host: {{ databricks_host }}
+
+  staging:
+    mode: production
+    workspace:
+      host: {{ databricks_host }}
+      # TODO: set staging workspace host if different
+
+  prod:
+    mode: production
+    workspace:
+      host: {{ databricks_host }}
+      # TODO: set production workspace host if different

@@ -1,0 +1,35 @@
+"""Tests for config loading and merging."""
+from __future__ import annotations
+
+from {{ package_name }}.config import _deep_merge, load_config
+
+
+def test_deep_merge_overrides_scalar():
+    base = {"a": 1, "b": {"c": 2, "d": 3}}
+    result = _deep_merge(base, {"b": {"c": 99}})
+    assert result == {"a": 1, "b": {"c": 99, "d": 3}}
+
+
+def test_deep_merge_adds_new_keys():
+    assert _deep_merge({"a": 1}, {"b": 2}) == {"a": 1, "b": 2}
+
+
+def test_deep_merge_empty_override():
+    base = {"a": {"x": 1}}
+    assert _deep_merge(base, {}) == base
+
+
+def test_load_config_dev_log_level():
+    cfg = load_config("dev")
+    assert cfg.app.log_level == "DEBUG"
+
+
+def test_load_config_dev_catalog():
+    cfg = load_config("dev")
+    assert cfg.unity_catalog.catalog.endswith("_dev")
+
+
+def test_load_config_prod_catalog():
+    cfg = load_config("prod")
+    assert not cfg.unity_catalog.catalog.endswith("_dev")
+    assert not cfg.unity_catalog.catalog.endswith("_staging")

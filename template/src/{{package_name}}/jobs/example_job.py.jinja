@@ -1,0 +1,33 @@
+"""Example job: read → transform → write."""
+from __future__ import annotations
+
+import logging
+
+from pyspark.sql import SparkSession
+
+from {{ package_name }}.config import Config
+from {{ package_name }}.io.reader import read_table
+from {{ package_name }}.io.writer import write_table
+from {{ package_name }}.transformations.example import add_processing_date, filter_non_null
+
+logger = logging.getLogger(__name__)
+
+
+def run(spark: SparkSession, cfg: Config) -> None:
+    """Read source table, apply transformations, write to output table."""
+    catalog = cfg.unity_catalog.catalog
+    schema = cfg.unity_catalog.schema_name
+
+    source = f"{catalog}.{schema}.source"
+    output = f"{catalog}.{schema}.output"
+
+    logger.info("Reading from %s", source)
+    df = read_table(spark, source)
+
+    logger.info("Applying transformations")
+    df = filter_non_null(df, "id")
+    df = add_processing_date(df)
+
+    logger.info("Writing to %s", output)
+    write_table(df, output, mode="overwrite")
+    logger.info("Written %d rows", df.count())

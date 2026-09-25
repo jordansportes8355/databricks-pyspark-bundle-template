@@ -1,0 +1,36 @@
+"""Tests for example transformations."""
+from __future__ import annotations
+
+from datetime import date
+
+from pyspark.sql import SparkSession
+
+from {{ package_name }}.transformations.example import add_processing_date, filter_non_null
+
+
+def test_add_processing_date_adds_column(spark: SparkSession):
+    df = spark.createDataFrame([("a",), ("b",)], ["id"])
+    result = add_processing_date(df)
+    assert "processing_date" in result.columns
+
+
+def test_add_processing_date_is_today(spark: SparkSession):
+    df = spark.createDataFrame([(1,)], ["id"])
+    result = add_processing_date(df)
+    today = result.first()["processing_date"]
+    assert today == date.today()
+
+
+def test_filter_non_null_removes_nulls(spark: SparkSession):
+    df = spark.createDataFrame(
+        [(1, "a"), (None, "b"), (3, None), (4, "d")],
+        ["id", "name"],
+    )
+    result = filter_non_null(df, "id", "name")
+    ids = {row.id for row in result.collect()}
+    assert ids == {1, 4}
+
+
+def test_filter_non_null_no_args_is_noop(spark: SparkSession):
+    df = spark.createDataFrame([(1,), (None,)], ["id"])
+    assert filter_non_null(df).count() == 2

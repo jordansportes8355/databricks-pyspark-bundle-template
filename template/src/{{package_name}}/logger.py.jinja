@@ -1,0 +1,21 @@
+"""Logging configuration from conf/logging.yaml."""
+from __future__ import annotations
+
+import logging
+import logging.config
+from pathlib import Path
+
+import yaml
+
+_LOGGING_YAML = Path(__file__).parent / "conf" / "logging.yaml"
+
+
+def configure_logging(level: str = "INFO") -> None:
+    """Apply conf/logging.yaml then set root level to ``level``."""
+    if _LOGGING_YAML.exists():
+        with _LOGGING_YAML.open(encoding="utf-8") as f:
+            config = yaml.safe_load(f)
+        if config:
+            logging.config.dictConfig(config)
+
+    logging.getLogger().setLevel(getattr(logging, level.upper(), logging.INFO))

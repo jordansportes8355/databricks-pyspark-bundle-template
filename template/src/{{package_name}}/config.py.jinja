@@ -1,0 +1,60 @@
+"""Configuration loading: base.yaml + env overlay, validated by pydantic-settings."""
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any
+
+import yaml
+from pydantic import BaseModel, Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# conf/ lives next to this file inside the installed wheel — works both locally
+# (editable install) and on Databricks (regular wheel in site-packages).
+_CONF_DIR = Path(__file__).parent / "conf"
+
+
+class AppConfig(BaseModel):
+    name: str
+    log_level: str = "INFO"
+
+
+class UnityCatalogConfig(BaseModel):
+    model_config = {"populate_by_name": True}
+
+    catalog: str
+    # "schema" is a pydantic v1 compat method name; use alias to keep YAML clean
+    schema_name: str = Field(alias="schema", default="")
+
+
+class Config(BaseSettings):
+    model_config = SettingsConfigDict(extra="ignore")
+
+    app: AppConfig
+    spark: dict[str, Any] = {}
+    unity_catalog: UnityCatalogConfig
+
+
+def load_config(env: str) -> Config:
+    """Merge base.yaml with the env-specific overlay and return a validated Config."""
+    base = _load_yaml("base.yaml")
+    overlay = _load_yaml(f"{env}.yaml")
+    merged = _deep_merge(base, overlay)
+    return Config(**merged)
+
+
+def _load_yaml(filename: str) -> dict[str, Any]:
+    path = _CONF_DIR / filename
+    if not path.exists():
+        return {}
+    with path.open(encoding="utf-8") as f:
+        return yaml.safe_load(f) or {}
+
+
+def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
+    result = base.copy()
+    for key, value in override.items():
+        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+            result[key] = _deep_merge(result[key], value)
+        else:
+            result[key] = value
+    return result

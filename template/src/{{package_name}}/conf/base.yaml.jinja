@@ -1,0 +1,12 @@
+app:
+  name: "{{ project_name }}"
+  log_level: INFO
+
+spark:
+  sql.shuffle.partitions: 200
+  sql.adaptive.enabled: "true"
+  sql.adaptive.coalescePartitions.enabled: "true"
+
+unity_catalog:
+  catalog: "{{ unity_catalog_name }}"
+  schema: "{{ package_name }}"

@@ -1,0 +1,23 @@
+"""Example transformations — pure functions, no I/O, easy to unit-test."""
+from __future__ import annotations
+
+from pyspark.sql import DataFrame
+from pyspark.sql import functions as F
+
+
+def add_processing_date(df: DataFrame, date_col: str = "processing_date") -> DataFrame:
+    """Append a column with today's date."""
+    return df.withColumn(date_col, F.current_date())
+
+
+def filter_non_null(df: DataFrame, *cols: str) -> DataFrame:
+    """Drop rows where any of the specified columns is null.
+
+    If no columns are given, the DataFrame is returned unchanged.
+    """
+    if not cols:
+        return df
+    condition = F.col(cols[0]).isNotNull()
+    for col in cols[1:]:
+        condition = condition & F.col(col).isNotNull()
+    return df.filter(condition)

@@ -1,0 +1,24 @@
+"""Delta table writers — Unity Catalog."""
+from __future__ import annotations
+
+from pyspark.sql import DataFrame
+
+
+def write_table(
+    df: DataFrame,
+    table: str,
+    mode: str = "overwrite",
+    partition_by: list[str] | None = None,
+) -> None:
+    """Write a DataFrame to a Delta table in Unity Catalog.
+
+    Args:
+        df: DataFrame to persist.
+        table: Fully qualified name (catalog.schema.table).
+        mode: 'overwrite' replaces the table; 'append' adds rows.
+        partition_by: Optional list of partition columns.
+    """
+    writer = df.write.format("delta").mode(mode)
+    if partition_by:
+        writer = writer.partitionBy(*partition_by)
+    writer.saveAsTable(table)

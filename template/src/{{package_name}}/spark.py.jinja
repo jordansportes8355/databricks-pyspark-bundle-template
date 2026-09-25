@@ -1,0 +1,25 @@
+"""SparkSession factory — active session on Databricks, local builder for tests."""
+from __future__ import annotations
+
+from pyspark.sql import SparkSession
+
+
+def get_spark(app_name: str = "{{ project_name }}") -> SparkSession:
+    """Return the active SparkSession if one exists (Databricks runtime), otherwise
+    create a local session with Delta Lake extensions (local development / CI).
+    """
+    active = SparkSession.getActiveSession()
+    if active is not None:
+        return active
+    return (
+        SparkSession.builder.appName(app_name)
+        .master("local[*]")
+        .config("spark.sql.shuffle.partitions", "4")
+        .config("spark.ui.enabled", "false")
+        .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
+        .config(
+            "spark.sql.catalog.spark_catalog",
+            "org.apache.spark.sql.delta.catalog.DeltaCatalog",
+        )
+        .getOrCreate()
+    )

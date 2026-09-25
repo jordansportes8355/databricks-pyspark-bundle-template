@@ -1,0 +1,34 @@
+resources:
+  jobs:
+    {{ project_slug }}_job:
+      name: "[${bundle.target}] {{ project_name }}"
+      description: "Main job for {{ project_name }}"
+
+      tasks:
+        - task_key: main
+          python_wheel_task:
+            package_name: {{ package_name }}
+            entry_point: {{ project_slug }}
+            parameters:
+              - "--env"
+              - "${bundle.target}"
+
+          libraries:
+            - whl: ./dist/*.whl
+
+          new_cluster:
+            spark_version: "{{ databricks_runtime }}.x-scala2.12"
+            node_type_id: ${var.node_type_id}
+            data_security_mode: SINGLE_USER
+            num_workers: 2  # TODO: tune per target (dev→1, prod→4)
+            spark_env_vars:
+              APP_ENV: "${bundle.target}"
+
+      schedule:
+        quartz_cron_expression: "0 0 8 * * ?"
+        timezone_id: "Europe/Paris"
+        pause_status: PAUSED  # Enable manually when ready
+
+      email_notifications:
+        on_failure:
+          - {{ author_email }}

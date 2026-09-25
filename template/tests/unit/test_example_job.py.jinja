@@ -1,0 +1,46 @@
+"""Unit tests for example_job — I/O mocked, transformations exercised."""
+from __future__ import annotations
+
+from unittest.mock import MagicMock, patch
+
+from pyspark.sql import SparkSession
+
+from {{ package_name }}.jobs.example_job import run
+
+
+def _make_cfg(catalog: str = "test_cat", schema: str = "test_schema") -> MagicMock:
+    cfg = MagicMock()
+    cfg.unity_catalog.catalog = catalog
+    cfg.unity_catalog.schema_name = schema
+    return cfg
+
+
+def test_run_filters_null_ids_and_writes(spark: SparkSession):
+    source_df = spark.createDataFrame(
+        [(1, "foo"), (2, "bar"), (None, "baz")],
+        ["id", "name"],
+    )
+
+    with (
+        patch("{{ package_name }}.jobs.example_job.read_table", return_value=source_df),
+        patch("{{ package_name }}.jobs.example_job.write_table") as mock_write,
+    ):
+        run(spark, _make_cfg())
+
+    assert mock_write.called
+    written_df = mock_write.call_args[0][0]
+    assert written_df.count() == 2
+    assert "processing_date" in written_df.columns
+
+
+def test_run_uses_correct_table_names(spark: SparkSession):
+    source_df = spark.createDataFrame([(1,)], ["id"])
+
+    with (
+        patch("{{ package_name }}.jobs.example_job.read_table", return_value=source_df) as mock_read,
+        patch("{{ package_name }}.jobs.example_job.write_table") as mock_write,
+    ):
+        run(spark, _make_cfg("my_cat", "my_schema"))
+
+    assert mock_read.call_args[0][1] == "my_cat.my_schema.source"
+    assert mock_write.call_args[0][1] == "my_cat.my_schema.output"

@@ -1,0 +1,36 @@
+"""Entry point for Databricks python_wheel_task."""
+from __future__ import annotations
+
+import argparse
+import logging
+import sys
+
+from {{ package_name }}.config import load_config
+from {{ package_name }}.jobs.example_job import run as run_example
+from {{ package_name }}.logger import configure_logging
+from {{ package_name }}.spark import get_spark
+
+logger = logging.getLogger(__name__)
+
+_JOBS = {
+    "example": run_example,
+}
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="{{ project_name }}")
+    parser.add_argument("--env", default="dev", choices=["dev", "staging", "prod"])
+    parser.add_argument("--job", default="example", choices=list(_JOBS))
+    args = parser.parse_args()
+
+    cfg = load_config(args.env)
+    configure_logging(cfg.app.log_level)
+    spark = get_spark(cfg.app.name)
+
+    logger.info("Starting job=%s env=%s", args.job, args.env)
+    _JOBS[args.job](spark, cfg)
+    logger.info("Job completed successfully")
+
+
+if __name__ == "__main__":
+    sys.exit(main())

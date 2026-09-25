@@ -1,0 +1,48 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "{{ project_slug }}"
+version = "0.1.0"
+description = "{{ project_name }}"
+authors = [{ name = "{{ author_name }}", email = "{{ author_email }}" }]
+requires-python = ">={{ python_version }}"
+dependencies = [
+    "pydantic-settings>=2.0",
+    "pyyaml>=6.0",
+    "python-json-logger>=2.0",
+]
+
+[project.scripts]
+{{ project_slug }} = "{{ package_name }}.main:main"
+
+[project.optional-dependencies]
+# Adjust pyspark version to match your DBR: 14/15 → 3.5, 13 → 3.4
+local = [
+    "pyspark>=3.5",
+    "delta-spark>=3.2",
+]
+dev = [
+    "pyspark>=3.5",
+    "delta-spark>=3.2",
+    "pytest>=8.0",
+    "chispa>=0.9",
+    "ruff>=0.6",
+    "pre-commit>=3.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/{{ package_name }}"]
+
+[tool.ruff]
+line-length = 120
+src = ["src"]
+target-version = "py{{ python_version | replace('.', '') }}"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"
