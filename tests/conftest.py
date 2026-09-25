@@ -35,5 +35,6 @@ def generated_project(tmp_path_factory):
         defaults=True,
         overwrite=True,
         unsafe=True,  # needed if _tasks is ever added to copier.yml
+        vcs_ref="HEAD",  # always use latest commit, not the most recent tag
     )
     return dst
