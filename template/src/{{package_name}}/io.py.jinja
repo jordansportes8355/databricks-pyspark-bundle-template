@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pyspark.sql import DataFrame, SparkSession
 
 
@@ -18,8 +20,9 @@ def read_path(spark: SparkSession, path: str) -> DataFrame:
 def write_table(
     df: DataFrame,
     table: str,
-    mode: str = "overwrite",
+    mode: Literal["overwrite", "append"] = "overwrite",
     partition_by: list[str] | None = None,
+    schema_evolution: bool = False,
 ) -> None:
     """Write a DataFrame to a Delta table in Unity Catalog.
 
@@ -28,8 +31,14 @@ def write_table(
         table: Fully qualified name (catalog.schema.table).
         mode: 'overwrite' replaces the table; 'append' adds rows.
         partition_by: Optional list of partition columns.
+        schema_evolution: If True, allows schema changes:
+            - append: new columns are added (mergeSchema).
+            - overwrite: schema and partitioning are replaced (overwriteSchema).
     """
     writer = df.write.format("delta").mode(mode)
+    if schema_evolution:
+        option = "overwriteSchema" if mode == "overwrite" else "mergeSchema"
+        writer = writer.option(option, "true")
     if partition_by:
         writer = writer.partitionBy(*partition_by)
     writer.saveAsTable(table)

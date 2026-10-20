@@ -1,4 +1,4 @@
-.PHONY: install lint format test test-integration validate deploy-dev run-dev clean
+.PHONY: install lint format test test-integration validate deploy-dev run-dev run-dev-only bump-version clean
 
 # Databricks Connect lives in its own venv: it cannot coexist with pyspark.
 DBCONNECT = UV_PROJECT_ENVIRONMENT=.venv-dbconnect uv run --no-default-groups --group dev --group dbconnect
@@ -12,6 +12,10 @@ lint:
 	uv run ruff check src/ tests/
 	uv run ruff format --check src/ tests/
 
+fix:
+	uv run ruff check --fix src/ tests/
+	uv run ruff format src/ tests/
+
 format:
 	uv run ruff format src/ tests/
 	uv run ruff check --fix src/ tests/
@@ -23,15 +27,33 @@ test:
 test-integration:
 	$(DBCONNECT) pytest tests/integration/
 
+login-dev:
+	BROWSER=echo databricks auth login --profile dev-esf
+
 validate:
 	databricks bundle validate
 
-# staging / prod are deployed by CI only (push to main, v* tag)
+# no-prod / prod are deployed by CI only (push to main, v* tag)
 deploy-dev:
 	databricks bundle deploy --target dev
 
+# Usage: make run-dev JOB=example_job
+JOB ?= hello_world_job
+
 run-dev: deploy-dev
-	databricks bundle run --target dev {{ package_name }}_job
+	databricks bundle run --target dev $(JOB)
+
+# Re-run an already deployed job, without redeploying
+run-dev-only:
+	databricks bundle run --target dev $(JOB)
+
+# Usage: make bump-version BUMP=minor  (major | minor | patch)
+# Updates pyproject.toml and uv.lock; CI requires the prod tag to be v<version>.
+BUMP ?= patch
+
+bump-version:
+	uv version --bump $(BUMP) --no-sync
+	@echo "Commit, merge to main, then tag v$$(uv version --short)"
 
 clean:
 	rm -rf dist/ .pytest_cache/ spark-warehouse/ metastore_db/ derby.log

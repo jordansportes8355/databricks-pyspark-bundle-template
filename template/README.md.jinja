@@ -26,7 +26,7 @@ In dev, the job is named `[dev <you>] …`, its schedule is paused and it writes
 
 | Path | Role |
 | --- | --- |
-| `databricks.yml` | Bundle: targets (dev / staging / prod) and their variables |
+| `databricks.yml` | Bundle: targets (dev / no-prod / prod) and their variables |
 | `resources/` | Jobs deployed by the bundle |
 | `src/{{ package_name }}/main.py` | Wheel entry point, receives `--catalog`, `--schema`, `--log-level` |
 | `src/{{ package_name }}/jobs/` | Jobs wiring I/O and transformations |
@@ -42,13 +42,19 @@ Add a job by creating a module in `jobs/` exposing `run(spark, cfg)` and registe
 Settings that change per environment are bundle variables, set per target in `databricks.yml`
 and passed to the job as parameters:
 
-| Variable | dev | staging | prod |
+| Variable | dev | no-prod | prod |
 | --- | --- | --- | --- |
 | `catalog` | `{{ unity_catalog_name }}` | `{{ unity_catalog_name }}` | `{{ unity_catalog_name }}` |
-| `schema` | `dev_<you>` | `{{ package_name }}_staging` | `{{ package_name }}` |
+| `schema` | `dev_<you>` | `{{ package_name }}_no_prod` | `{{ package_name }}` |
 | `log_level` | `DEBUG` | `INFO` | `INFO` |
-| `pause_status` | `PAUSED` | `PAUSED` | `UNPAUSED` |
+| `schedule_status` | `PAUSED` | `PAUSED` | `UNPAUSED` |
 
+{% if compute == 'job_cluster' -%}
+The cluster (`{{ job_cluster_key }}`) is the `job_clusters` complex variable in `databricks.yml`; the job references it with
+`job_clusters: ${var.job_clusters}`. It uses the cluster policy `{{ databricks_policy_id }}`;
+`node_type_id` and `max_workers` are its tunable parts.
+
+{% endif -%}
 To add a setting: declare a variable in `databricks.yml`, pass it in `resources/{{ package_name }}_job.yml`,
 then read it in `main.py`.
 
@@ -59,11 +65,11 @@ The deploying identity needs `USE CATALOG` and `CREATE SCHEMA` on `{{ unity_cata
 | Target | How |
 | --- | --- |
 | dev | `make run-dev` |
-| staging | automatic on push to `main`: deploy, run the job, integration tests |
+| no-prod | automatic on push to `main`: deploy, run the job, integration tests |
 | prod | automatic on `v*` tag, gated by the `production` GitHub environment |
 
 CI authenticates with a service principal (OAuth M2M): set `DATABRICKS_HOST`, `DATABRICKS_CLIENT_ID`
-and `DATABRICKS_CLIENT_SECRET` in the `staging` and `production` GitHub environments.
+and `DATABRICKS_CLIENT_SECRET` in the `no-prod` and `production` GitHub environments.
 
 ## Updating from the template
 

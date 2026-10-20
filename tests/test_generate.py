@@ -18,6 +18,7 @@ JOB_YML = "resources/test_spark_job_job.yml"
 EXPECTED_FILES = [
     ".copier-answers.yml",
     ".env.example",
+    ".github/pull_request_template.md",
     ".github/workflows/ci.yml",
     ".gitignore",
     ".pre-commit-config.yaml",
@@ -88,7 +89,7 @@ def test_answers_are_rendered(generated_project: Path, path: str, expected: str)
 def test_ci_yml_keeps_github_expressions(generated_project: Path):
     """GitHub Actions expressions must be preserved, not mangled by Copier."""
     content = (generated_project / ".github/workflows/ci.yml").read_text()
-    assert "${{ secrets.DATABRICKS_HOST }}" in content
+    assert "${{ secrets.DATABRICKS_TOKEN_DEV }}" in content
     assert "raw" not in content  # jinja raw tags must not leak into output
     assert "cancel-in-progress: ${{ github.event_name == 'pull_request' }}" in content
 
@@ -160,7 +161,13 @@ def test_local_stack_matches_compute(make_project, answers, python, pyspark, dbc
 )
 def test_job_cluster_spark_version(make_project, runtime: str, spark_version: str):
     project = make_project(**{**JOB_CLUSTER, "databricks_runtime": runtime})
-    assert f'spark_version: "{spark_version}"' in (project / JOB_YML).read_text()
+    assert f'spark_version: "{spark_version}"' in (project / "databricks.yml").read_text()
+
+
+def test_job_cluster_key_shared_by_task_and_cluster(make_project):
+    project = make_project(**{**JOB_CLUSTER, "job_cluster_key": "job_cluster_demo"})
+    assert "job_cluster_key: job_cluster_demo" in (project / JOB_YML).read_text()
+    assert "job_cluster_key: job_cluster_demo" in (project / "databricks.yml").read_text()
 
 
 @pytest.mark.parametrize(
@@ -171,6 +178,8 @@ def test_job_cluster_spark_version(make_project, runtime: str, spark_version: st
         {"author_email": "not-an-email"},
         {"databricks_host": "test.cloud.databricks.com"},
         {"unity_catalog_name": "Bad-Catalog"},
+        {**JOB_CLUSTER, "job_cluster_key": "bad key"},
+        {**JOB_CLUSTER, "databricks_policy_id": "not a policy"},
     ],
 )
 def test_validators_reject_invalid_answers(make_project, bad_answer: dict[str, str]):
@@ -192,7 +201,7 @@ def test_ruff_passes(generated_project: Path, cmd: list[str]):
 
 
 @pytest.mark.skipif(shutil.which("databricks") is None, reason="Databricks CLI not installed")
-@pytest.mark.parametrize("target", ["dev", "staging", "prod"])
+@pytest.mark.parametrize("target", ["dev", "no-prod", "prod"])
 def test_bundle_validates(generated_project: Path, databricks_api: str, tmp_path: Path, target: str):
     """`databricks bundle validate` against a fake workspace API: config, variables and paths resolve."""
     project = shutil.copytree(generated_project, tmp_path / "bundle")
@@ -206,16 +215,16 @@ def test_bundle_validates(generated_project: Path, databricks_api: str, tmp_path
     assert "Warning:" not in text.stdout + text.stderr
 
     resolved = json.loads(_run(["databricks", "bundle", "validate", "-t", target, "-o", "json"], project, env).stdout)
-    task = resolved["resources"]["jobs"]["test_spark_job_job"]["tasks"][0]
+    task = resolved["resources"]["jobs"]["example_job"]["tasks"][0]
     params = task["python_wheel_task"]["parameters"]
-    expected_schema = {"dev": "dev_jane_doe", "staging": "test_spark_job_staging", "prod": "test_spark_job"}
+    expected_schema = {"dev": "dev_jane_doe", "no-prod": "test_spark_job_no_prod", "prod": "test_spark_job"}
     assert params[params.index("--schema") + 1] == expected_schema[target]
     assert params[params.index("--catalog") + 1] == "test_catalog"
 
-    schedule = resolved["resources"]["jobs"]["test_spark_job_job"]["schedule"]
+    schedule = resolved["resources"]["jobs"]["example_job"]["schedule"]
     assert schedule["pause_status"] == ("UNPAUSED" if target == "prod" else "PAUSED")
 
-    environments = resolved["resources"]["jobs"]["test_spark_job_job"].get("environments", [])
+    environments = resolved["resources"]["jobs"]["example_job"].get("environments", [])
     wheels = [lib["whl"] for lib in task.get("libraries", [])]
     wheels += [dep for env_ in environments for dep in env_["spec"]["dependencies"]]
     assert wheels and all(w.removeprefix("./") == "dist/*.whl" for w in wheels), wheels

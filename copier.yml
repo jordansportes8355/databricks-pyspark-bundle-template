@@ -101,6 +101,25 @@ cloud_provider:
     - azure
     - gcp
 
+job_cluster_key:
+  type: str
+  help: "Key of the job cluster, referenced by the job tasks (e.g. 'main', 'job_cluster_myproject')"
+  when: "{{ compute == 'job_cluster' }}"
+  default: main
+  validator: >-
+    {% if not (job_cluster_key | regex_search('^[A-Za-z][A-Za-z0-9_-]*$')) %}
+    Must start with a letter and contain only letters, digits, underscores and dashes
+    {% endif %}
+
+databricks_policy_id:
+  type: str
+  help: "ID of the cluster policy applied to the job cluster (Compute > Policies)"
+  when: "{{ compute == 'job_cluster' }}"
+  validator: >-
+    {% if not (databricks_policy_id | regex_search('^[0-9A-Za-z]+$')) %}
+    Must be a policy ID (letters and digits only, e.g. XXXXXXXX)
+    {% endif %}
+
 # ── Computed (hidden) ─────────────────────────────────────────────────────────
 # Single source of truth for the local stack matching the remote compute.
 # Serverless environments map to the DBR they are built on. Add a new DBR here.

@@ -1,0 +1,22 @@
+## Ticket
+
+<!-- Link or key of the ticket, e.g. https://<tracker>/browse/ABC-123 -->
+
+## Description
+
+<!-- What changes and why. -->
+
+## Checklist
+
+- [ ] Documentation updated (README, comments)
+- [ ] Unit tests added or updated, `make test` passes
+- [ ] Integration tests added or updated, `make test-integration` passes
+- [ ] `make lint` passes
+- [ ] `databricks bundle validate` passes if `databricks.yml` or `resources/` changed
+- [ ] Jobs tested in dev (`make run-dev JOB=<name>_job`) and run succeeded
+- [ ] Jobs tested in no-prod and run succeeded
+- [ ] Version bumped with `make bump-version` if this PR is meant to be released
+
+## Notes for reviewers
+
+<!-- Optional: deployment impact, variables or secrets to create, points to check. -->

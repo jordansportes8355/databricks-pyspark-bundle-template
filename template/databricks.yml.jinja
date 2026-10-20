@@ -14,14 +14,14 @@ artifacts:
 
 variables:
   catalog:
-    description: Unity Catalog catalog the job writes to (must exist)
+    description: Catalog the job writes to (set per target)
     default: {{ unity_catalog_name }}
   schema:
     description: Schema the job writes to (created if missing)
   log_level:
     description: Root log level of the job
     default: INFO
-  pause_status:
+  schedule_status:
     description: Schedule state (PAUSED / UNPAUSED), re-applied on every deploy
     default: PAUSED
 {%- if compute == 'job_cluster' %}
@@ -31,6 +31,21 @@ variables:
   max_workers:
     description: Job cluster autoscaling upper bound
     default: 2
+  job_clusters:
+    description: Job cluster definitions, referenced by task job_cluster_key
+    type: complex
+    default:
+      - job_cluster_key: {{ job_cluster_key }}
+        new_cluster:
+          policy_id: "{{ databricks_policy_id }}"
+          spark_version: "{{ databricks_runtime }}.x-scala{{ runtime.scala }}"
+          node_type_id: ${var.node_type_id}
+          data_security_mode: DATA_SECURITY_MODE_AUTO
+          autoscale:
+            min_workers: 1
+            max_workers: ${var.max_workers}
+          # spark_conf:
+          #   spark.sql.shuffle.partitions: "auto"
 {%- endif %}
 
 targets:
@@ -49,14 +64,14 @@ targets:
       artifacts_dynamic_version: true  # clusters cache wheels by version
 {%- endif %}
 
-  staging:
+  no-prod:
     mode: production
     workspace:
-      host: {{ databricks_host }}  # TODO: set staging workspace host if different
+      host: {{ databricks_host }}  # TODO: set no-prod workspace host if different
       # Deploying identity's folder (the CI service principal): one copy, not writable by all users
       root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
     variables:
-      schema: {{ package_name }}_staging
+      schema: {{ package_name }}_no_prod
     # The job runs as the deploying identity (the CI service principal). To pin another one:
     # run_as:
     #   service_principal_name: <application-id>
@@ -72,7 +87,7 @@ targets:
       root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
     variables:
       schema: {{ package_name }}
-      pause_status: UNPAUSED
+      schedule_status: UNPAUSED
 {%- if compute == 'job_cluster' %}
       max_workers: 4
 {%- endif %}
