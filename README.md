@@ -4,13 +4,13 @@
 
 ## What you get
 
-- A Databricks Asset Bundle (`databricks.yml`) with `dev` / `staging` / `prod` targets; per-environment
+- A Databricks Asset Bundle (`databricks.yml`) with `dev` / `no-prod` / `prod` targets; per-environment
   settings (catalog, schema, log level) are bundle variables passed to the job
 - A Python wheel run by a `python_wheel_task`, on **serverless** compute or a **job cluster** (chosen at generation)
 - Personal dev copies: `[dev <you>]` job, paused schedule, `dev_<you>` schema
 - Unit tests on local Spark + Delta, integration tests on the workspace through Databricks Connect,
   both pinned to the Spark / Python version of the chosen compute
-- GitHub Actions: lint, unit tests, bundle validate; on `main` deploy staging, run the job and the
+- GitHub Actions: lint, unit tests, bundle validate; on `main` deploy no-prod, run the job and the
   integration tests; on `v*` tags deploy prod. Auth with a service principal (OAuth M2M)
 
 ## Usage

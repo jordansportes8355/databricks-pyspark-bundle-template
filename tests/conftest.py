@@ -21,7 +21,7 @@ DEFAULT_ANSWERS = {
     "compute": "serverless",
 }
 
-JOB_CLUSTER = {"compute": "job_cluster", "databricks_runtime": "16.4", "cloud_provider": "aws"}
+JOB_CLUSTER = {"compute": "job_cluster", "databricks_runtime": "16.4", "cloud_provider": "aws", "databricks_policy_id": "XXXXXXXX"}
 
 
 def _generate(dst: Path, **overrides: Any) -> Path:

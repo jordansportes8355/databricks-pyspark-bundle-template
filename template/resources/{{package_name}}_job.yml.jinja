@@ -1,15 +1,17 @@
 resources:
   jobs:
-    {{ package_name }}_job:
-      name: "{{ project_name }} (${bundle.target})"
-      description: "Main job for {{ project_name }}"
+    example_job:
+      name: "{{ project_name }} - example (${bundle.target})"
+      description: "Reads the source table, transforms it and writes to the job schema"
 
       tasks:
-        - task_key: main
+        - task_key: main # Add task if we want to chain jobs
           python_wheel_task:
             package_name: {{ package_name }}
             entry_point: {{ project_slug }}
             parameters:
+              - "--job"
+              - "example"
               - "--catalog"
               - "${var.catalog}"
               - "--schema"
@@ -19,7 +21,7 @@ resources:
 {%- if compute == 'serverless' %}
           environment_key: default
 {%- else %}
-          job_cluster_key: main
+          job_cluster_key: {{ job_cluster_key }}
           libraries:
             - whl: ../dist/*.whl  # relative to this file
 {%- endif %}
@@ -27,7 +29,7 @@ resources:
       schedule:
         quartz_cron_expression: "0 0 8 * * ?"
         timezone_id: "Europe/Paris"
-        pause_status: ${var.pause_status}
+        pause_status: ${var.schedule_status}
 
       email_notifications:
         on_failure:
@@ -42,15 +44,5 @@ resources:
               - ../dist/*.whl  # relative to this file
 {%- else %}
 
-      job_clusters:
-        - job_cluster_key: main
-          new_cluster:
-            spark_version: "{{ databricks_runtime }}.x-scala{{ runtime.scala }}"
-            node_type_id: ${var.node_type_id}
-            data_security_mode: DATA_SECURITY_MODE_AUTO
-            autoscale:
-              min_workers: 1
-              max_workers: ${var.max_workers}
-            # spark_conf:
-            #   spark.sql.shuffle.partitions: "auto"
+      job_clusters: ${var.job_clusters}
 {%- endif %}
